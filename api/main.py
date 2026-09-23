@@ -1,11 +1,20 @@
-from io import BytesIO
+import logging
+import time
+import uuid
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 
 from src.detector import HOGPedestrianDetector
 from src.postprocessing import non_max_suppression
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s",
+)
+
+logger = logging.getLogger("pedestrian-api")
 
 app = FastAPI(
     title="HOG Pedestrian Detection API",
@@ -13,6 +22,43 @@ app = FastAPI(
 )
 
 detector = HOGPedestrianDetector()
+
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    request_id = str(uuid.uuid4())
+    start = time.perf_counter()
+
+    try:
+        response = await call_next(request)
+
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        response.headers["X-Request-ID"] = request_id
+
+        logger.info(
+            "request_id=%s method=%s path=%s status=%s latency_ms=%.3f",
+            request_id,
+            request.method,
+            request.url.path,
+            response.status_code,
+            latency_ms,
+        )
+
+        return response
+
+    except Exception:
+        latency_ms = (time.perf_counter() - start) * 1000
+
+        logger.exception(
+            "request_id=%s method=%s path=%s status=500 latency_ms=%.3f",
+            request_id,
+            request.method,
+            request.url.path,
+            latency_ms,
+        )
+
+        raise
 
 
 @app.get("/health")
@@ -25,9 +71,7 @@ def health():
 
 
 @app.post("/detect")
-async def detect(
-    file: UploadFile = File(...)
-):
+async def detect(file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith(
         "image/"
     ):
@@ -37,6 +81,12 @@ async def detect(
         )
 
     contents = await file.read()
+
+    if not contents:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty",
+        )
 
     image_array = np.frombuffer(
         contents,
