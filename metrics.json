@@ -1,0 +1,14 @@
+{
+  "input": "examples\\input\\pedestrian.png",
+  "runs": 20,
+  "image_width": 1243,
+  "image_height": 819,
+  "mean_latency_ms": 609.049,
+  "median_latency_ms": 609.688,
+  "p50_latency_ms": 610.799,
+  "p95_latency_ms": 674.131,
+  "min_latency_ms": 486.182,
+  "max_latency_ms": 674.131,
+  "mean_detections": 13,
+  "detection_count_stable": true
+}

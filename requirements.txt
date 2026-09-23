@@ -1,0 +1,9 @@
+opencv-python==4.14.0.94
+numpy==2.2.6
+fastapi
+uvicorn
+python-multipart
+pydantic
+pytest
+httpx2
+Pillow
