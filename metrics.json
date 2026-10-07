@@ -1,14 +1,15 @@
 {
   "input": "examples\\input\\pedestrian.png",
-  "runs": 20,
+  "runs": 10,
+  "first_call_latency_ms": 642.288,
   "image_width": 1243,
   "image_height": 819,
-  "mean_latency_ms": 609.049,
-  "median_latency_ms": 609.688,
-  "p50_latency_ms": 610.799,
-  "p95_latency_ms": 674.131,
-  "min_latency_ms": 486.182,
-  "max_latency_ms": 674.131,
+  "mean_latency_ms": 621.315,
+  "p50_latency_ms": 635.27,
+  "median_latency_ms": 635.27,
+  "p95_latency_ms": 662.13,
+  "min_latency_ms": 491.316,
+  "max_latency_ms": 662.13,
   "mean_detections": 13,
   "detection_count_stable": true
 }

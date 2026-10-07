@@ -27,6 +27,7 @@ detector = HOGPedestrianDetector()
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
     request_id = str(uuid.uuid4())
+    request.state.request_id = request_id
     start = time.perf_counter()
 
     try:
@@ -71,7 +72,7 @@ def health():
 
 
 @app.post("/detect")
-async def detect(file: UploadFile = File(...)):
+async def detect(request: Request, file: UploadFile = File(...)):
     if not file.content_type or not file.content_type.startswith(
         "image/"
     ):
@@ -112,12 +113,14 @@ async def detect(file: UploadFile = File(...)):
     )
 
     return {
+        "request_id": request.state.request_id,
         "filename": file.filename,
         "image": {
             "width": int(image.shape[1]),
             "height": int(image.shape[0]),
         },
         "raw_detections": result["count"],
+        "raw_detection_results": result["detections"],
         "final_detections": len(final_detections),
         "suppressed_detections": (
             result["count"] - len(final_detections)

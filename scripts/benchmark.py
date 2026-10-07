@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import statistics
 import time
 from pathlib import Path
@@ -17,6 +18,9 @@ def main():
 
     args = parser.parse_args()
 
+    if args.runs < 1:
+        parser.error("--runs must be >= 1")
+
     image = cv2.imread(args.input)
 
     if image is None:
@@ -29,8 +33,10 @@ def main():
     latencies = []
     detection_counts = []
 
-    # Warm-up
+    # Report the first detector call separately from warm inference.
+    cold_start = time.perf_counter()
     detector.detect(image)
+    cold_start_latency_ms = (time.perf_counter() - cold_start) * 1000
 
     for _ in range(args.runs):
         start = time.perf_counter()
@@ -44,27 +50,21 @@ def main():
 
     latencies_sorted = sorted(latencies)
 
-    p50_index = int(0.50 * len(latencies_sorted))
-    p95_index = min(
-        int(0.95 * len(latencies_sorted)),
-        len(latencies_sorted) - 1,
-    )
+    p95_index = max(0, math.ceil(0.95 * len(latencies_sorted)) - 1)
 
     metrics = {
         "input": str(Path(args.input)),
         "runs": args.runs,
+        "first_call_latency_ms": round(cold_start_latency_ms, 3),
         "image_width": int(image.shape[1]),
         "image_height": int(image.shape[0]),
         "mean_latency_ms": round(
             statistics.mean(latencies),
             3,
         ),
+        "p50_latency_ms": round(statistics.median(latencies), 3),
         "median_latency_ms": round(
             statistics.median(latencies),
-            3,
-        ),
-        "p50_latency_ms": round(
-            latencies_sorted[p50_index],
             3,
         ),
         "p95_latency_ms": round(
