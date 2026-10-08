@@ -1,4 +1,4 @@
-from time import perf_counter
+from time import perf_counter, process_time
 
 import cv2
 
@@ -22,6 +22,7 @@ class HOGPedestrianDetector:
             raise ValueError("Input image must be a color image")
 
         start = perf_counter()
+        cpu_start = process_time()
 
         boxes, weights = self.hog.detectMultiScale(
             image,
@@ -32,6 +33,7 @@ class HOGPedestrianDetector:
         )
 
         latency_ms = (perf_counter() - start) * 1000
+        cpu_time_ms = (process_time() - cpu_start) * 1000
 
         detections = [
             {
@@ -50,4 +52,5 @@ class HOGPedestrianDetector:
             "detections": detections,
             "count": len(detections),
             "latency_ms": round(latency_ms, 3),
+            "cpu_time_ms": round(cpu_time_ms, 3),
         }

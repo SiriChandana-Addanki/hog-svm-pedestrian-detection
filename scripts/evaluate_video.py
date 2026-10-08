@@ -1,6 +1,7 @@
 import argparse
 import csv
 import statistics
+from time import perf_counter
 
 import cv2
 
@@ -272,13 +273,20 @@ def main():
 
     evaluated_frames = 0
     inference_times = []
+    inference_frames = []
+    detector_call_times = []
+    detector_cpu_times = []
+    decode_times = []
     annotated_frames = 0
     decoded_frames = 0
 
     frame_index = 0
 
     while True:
+        decode_started = perf_counter()
         ret, frame = cap.read()
+        decode_ms = (perf_counter() - decode_started) * 1000
+        decode_times.append((frame_index + 1, decode_ms))
 
         if not ret:
             break
@@ -301,7 +309,9 @@ def main():
             frame_index += 1
             continue
 
+        call_started = perf_counter()
         result = detector.detect(frame)
+        call_ms = (perf_counter() - call_started) * 1000
 
         detections = non_max_suppression(
             result["detections"],
@@ -311,6 +321,9 @@ def main():
         )
 
         inference_times.append(result["latency_ms"])
+        inference_frames.append(current_frame_number)
+        detector_call_times.append(call_ms)
+        detector_cpu_times.append(result["cpu_time_ms"])
 
         gt_boxes = ground_truth[
             current_frame_number
@@ -449,6 +462,13 @@ def main():
     print(f"P95 latency (ms)   : {percentile(95):.3f}")
     print(f"Min latency (ms)   : {min(inference_times):.3f}")
     print(f"Max latency (ms)   : {max(inference_times):.3f}")
+    max_index = max(range(len(inference_times)), key=inference_times.__getitem__)
+    max_frame = inference_frames[max_index]
+    print(f"Max latency frame  : {max_frame}")
+    print(f"Max detector call wall (ms): {max(detector_call_times):.3f}")
+    print(f"Max detector CPU time (ms) : {max(detector_cpu_times):.3f}")
+    print(f"Mean video decode (ms)     : {statistics.mean(value for _, value in decode_times):.3f}")
+    print(f"Max video decode (ms)      : {max(value for _, value in decode_times):.3f}")
 
     print("=" * 50)
 
