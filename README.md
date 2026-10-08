@@ -32,13 +32,15 @@ Run tests with `python -m pytest -q`. Build and run the container with `docker c
 
 ## Evaluation
 
-The video evaluator reads frames sequentially, because some codecs report an unreliable frame count. CSV annotations are one-based by row and use pixel `x,y,w,h`; boxes are compared at IoU ≥ 0.5 using one-to-one confidence-ordered matching. Results report decoded, annotated, and evaluated frame counts, sampling interval, TP/FP/FN, precision/recall/F1, and detector inference latency percentiles. A limited run is not a full-dataset result.
+The video evaluator reads frames sequentially, because some codecs report an unreliable frame count. CSV annotations are one-based by row and use pixel `x,y,w,h`; boxes are compared at IoU ≥ 0.5 using one-to-one confidence-ordered matching. It reports detector wall-clock latency, detector process CPU time summed across process threads, and `cap.read()` video decode latency as separate distributions. Process CPU time can exceed wall time when work runs across multiple threads. Each distribution includes mean, median, p95, p99, minimum, and maximum; percentiles use the nearest-rank definition. Detector wall-time outliers are counted using `latency > 2 × detector wall-time p95`; every sample remains included in all statistics. Use `--timings-csv path.csv` to retain per-evaluated-frame raw measurements. Long calls are wall-clock stalls consistent with process scheduling or suspension; the evaluator does not identify their OS-level cause. A limited run is not a full-dataset result.
 
 Run the complete crosswalk evaluation:
 
 ```powershell
 python -m scripts.evaluate_video --video dataset/crosswalk.avi --annotations dataset/crosswalk.csv
 ```
+
+Append `--timings-csv results/crosswalk_latency.csv` to save per-evaluated-frame raw timing samples.
 
 Benchmark one image with a separate first-call (cold) latency and warm-call distribution:
 
@@ -48,10 +50,17 @@ python -m scripts.benchmark --input examples/input/pedestrian.png --runs 20
 
 ## Measured results
 
-- **Full crosswalk evaluation:** command `python -m scripts.evaluate_video --video dataset/crosswalk.avi --annotations dataset/crosswalk.csv`; 378 frames decoded and evaluated, 378 CSV annotation rows, sampling interval 1, IoU threshold 0.5. TP=173, FP=979, FN=205; precision=0.1502, recall=0.4577, F1=0.2261. Detector-call latency, including the first call: mean 3267.411 ms, median 3193.679 ms, p95 3950.198 ms, min 1345.467 ms, max 4439.053 ms.
-- **Single-image benchmark:** command `python -m scripts.benchmark --input examples/input/pedestrian.png --runs 10`; 1243 × 819 image, first detector-call latency 642.288 ms; 10 subsequent warm calls: mean 621.315 ms, median/p50 635.270 ms, p95 662.130 ms, min 491.316 ms, max 662.130 ms; mean detections 13 (stable in 10 runs). Development-machine measurement, not a throughput claim.
+Use the median, p95, and p99 as the primary summaries of detector wall-clock latency; wall-clock stalls can make the mean and maximum unrepresentative. The evaluator always prints maximum and outlier counts for transparency. Those values are raw measurements, not estimates of steady-state inference speed. Results depend on the machine and run conditions; rerun the commands above for a local measurement.
 
-The first-frame visual check confirmed the CSV box surrounds the visible pedestrian; after correcting the evaluator's coordinate conversion, that frame still has no prediction at IoU 0.5 because the HOG candidates are substantially larger than the annotation. The full-dataset metrics show the detector also produces many false positives on this clip. The included `fourway` and `night` videos were not evaluated; do not generalize the crosswalk score to them.
+Full evaluation on the included clips (detector wall-clock latency, milliseconds):
+
+| Clip | Evaluated frames | Median | P95 | P99 | Calls > 2×P95 |
+|---|---:|---:|---:|---:|---:|
+| Crosswalk | 378 | 3,777.595 | 4,321.959 | 5,036.236 | 2 |
+| Fourway | 1,281 | 3,223.860 | 4,293.305 | 5,577.873 | 5 |
+| Night | 565 | 3,306.285 | 4,507.020 | 51,131.841 | 21 |
+
+The included crosswalk, fourway, and night clips have separate scene characteristics. Do not generalize one clip's detection metrics to the others.
 
 ## Limitations
 

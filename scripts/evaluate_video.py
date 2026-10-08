@@ -1,11 +1,11 @@
 import argparse
 import csv
-import statistics
 from time import perf_counter
 
 import cv2
 
 from src.detector import HOGPedestrianDetector
+from src.latency import summarize_latency
 from src.postprocessing import non_max_suppression
 
 
@@ -218,6 +218,12 @@ def main():
         help="Optional maximum number of evaluated frames",
     )
 
+    parser.add_argument(
+        "--timings-csv",
+        default=None,
+        help="Optional path for per-frame decode, detector wall, and CPU timings",
+    )
+
     args = parser.parse_args()
 
     if args.sample_every < 1:
@@ -274,7 +280,6 @@ def main():
     evaluated_frames = 0
     inference_times = []
     inference_frames = []
-    detector_call_times = []
     detector_cpu_times = []
     decode_times = []
     annotated_frames = 0
@@ -286,7 +291,6 @@ def main():
         decode_started = perf_counter()
         ret, frame = cap.read()
         decode_ms = (perf_counter() - decode_started) * 1000
-        decode_times.append((frame_index + 1, decode_ms))
 
         if not ret:
             break
@@ -309,9 +313,7 @@ def main():
             frame_index += 1
             continue
 
-        call_started = perf_counter()
         result = detector.detect(frame)
-        call_ms = (perf_counter() - call_started) * 1000
 
         detections = non_max_suppression(
             result["detections"],
@@ -322,8 +324,8 @@ def main():
 
         inference_times.append(result["latency_ms"])
         inference_frames.append(current_frame_number)
-        detector_call_times.append(call_ms)
         detector_cpu_times.append(result["cpu_time_ms"])
+        decode_times.append(decode_ms)
 
         gt_boxes = ground_truth[
             current_frame_number
@@ -356,6 +358,14 @@ def main():
         frame_index += 1
 
     cap.release()
+
+    if args.timings_csv:
+        with open(args.timings_csv, "w", newline="", encoding="utf-8") as timing_file:
+            writer = csv.writer(timing_file)
+            writer.writerow(("frame", "video_decode_ms", "detector_wall_ms", "detector_cpu_ms"))
+            writer.writerows(
+                zip(inference_frames, decode_times, inference_times, detector_cpu_times)
+            )
 
     if (
         decoded_frames != len(ground_truth)
@@ -395,17 +405,9 @@ def main():
         else 0.0
     )
 
-    mean_latency = (
-        sum(inference_times)
-        / len(inference_times)
-        if inference_times
-        else 0.0
-    )
-    ordered_latencies = sorted(inference_times)
-
-    def percentile(percent):
-        index = max(0, int((percent / 100) * len(ordered_latencies) + 0.999999) - 1)
-        return ordered_latencies[index]
+    wall_summary = summarize_latency(inference_times)
+    cpu_summary = summarize_latency(detector_cpu_times)
+    decode_summary = summarize_latency(decode_times)
 
     print()
     print("=" * 50)
@@ -454,21 +456,25 @@ def main():
         f"{f1:.4f}"
     )
 
+    def print_latency_summary(label, summary):
+        print(f"{label} ({summary['count']} evaluated frames, ms):")
+        print(
+            "  mean={mean:.3f} median={median:.3f} p95={p95:.3f} "
+            "p99={p99:.3f} min={min:.3f} max={max:.3f}".format(**summary)
+        )
+
+    print_latency_summary("Detector wall-clock latency", wall_summary)
     print(
-        f"Mean latency (ms) : "
-        f"{mean_latency:.3f}"
+        "  Extreme outliers (> 2x wall p95 = "
+        f"{wall_summary['outlier_threshold']:.3f} ms): "
+        f"{wall_summary['outlier_count']} / {wall_summary['count']}"
     )
-    print(f"Median latency (ms): {statistics.median(inference_times):.3f}")
-    print(f"P95 latency (ms)   : {percentile(95):.3f}")
-    print(f"Min latency (ms)   : {min(inference_times):.3f}")
-    print(f"Max latency (ms)   : {max(inference_times):.3f}")
+    print_latency_summary("Detector process CPU time (summed across process threads)", cpu_summary)
+    print_latency_summary("Video decode latency (cap.read)", decode_summary)
     max_index = max(range(len(inference_times)), key=inference_times.__getitem__)
-    max_frame = inference_frames[max_index]
-    print(f"Max latency frame  : {max_frame}")
-    print(f"Max detector call wall (ms): {max(detector_call_times):.3f}")
-    print(f"Max detector CPU time (ms) : {max(detector_cpu_times):.3f}")
-    print(f"Mean video decode (ms)     : {statistics.mean(value for _, value in decode_times):.3f}")
-    print(f"Max video decode (ms)      : {max(value for _, value in decode_times):.3f}")
+    print(f"Detector wall-clock max frame: {inference_frames[max_index]}")
+    if args.timings_csv:
+        print(f"Per-frame timings CSV: {args.timings_csv}")
 
     print("=" * 50)
 
