@@ -10,6 +10,8 @@ Non-inference validation of the log/CSV validators only:
 The evaluator buffers timing rows in memory and writes its timing CSV only after
 the frame loop. Interruption during inference can leave no timing CSV. A run
 whose manifest remains "running" is incomplete and must not be treated as done.
+# A run is complete only when manifest.json and summary.json both say completed
+# for the same run and completion.json exists with the matching run ID/status.
 #>
 [CmdletBinding()]
 param(
@@ -40,13 +42,24 @@ function Get-RequiredLogValue {
     param(
         [Parameter(Mandatory = $true)][string]$Log,
         [Parameter(Mandatory = $true)][string]$Pattern,
-        [Parameter(Mandatory = $true)][string]$Description
+        [Parameter(Mandatory = $true)][string]$Description,
+        [string]$PresencePattern
     )
-    $match = [regex]::Match($Log, $Pattern, [Text.RegularExpressions.RegexOptions]::Multiline)
-    if (-not $match.Success) {
+    $matches = [regex]::Matches($Log, $Pattern, [Text.RegularExpressions.RegexOptions]::Multiline)
+    if ($PresencePattern) {
+        $present = [regex]::Matches($Log, $PresencePattern, [Text.RegularExpressions.RegexOptions]::Multiline)
+        if ($present.Count -ne 1) {
+            if ($present.Count -gt 1) { throw "Duplicate $Description fields in evaluator log ($($present.Count) occurrences)." }
+            throw "Missing $Description field in evaluator log."
+        }
+    }
+    if ($matches.Count -ne 1) {
+        if ($matches.Count -gt 1) {
+            throw "Duplicate $Description fields in evaluator log ($($matches.Count) occurrences)."
+        }
         throw "Missing or malformed $Description in evaluator log."
     }
-    return $match
+    return $matches[0]
 }
 
 function Get-LatencyDistribution {
@@ -109,12 +122,12 @@ function Test-ClipOutput {
         throw "Frame-count mismatch: decoded=$decoded annotated=$annotated evaluated=$evaluated CSV=$annotationRows expected=$ExpectedFrames."
     }
 
-    $tp = [int](Get-RequiredLogValue $log '^TP\s*:\s*(\d+)\s*$' 'TP').Groups[1].Value
-    $fp = [int](Get-RequiredLogValue $log '^FP\s*:\s*(\d+)\s*$' 'FP').Groups[1].Value
-    $fn = [int](Get-RequiredLogValue $log '^FN\s*:\s*(\d+)\s*$' 'FN').Groups[1].Value
-    $precision = Convert-LogNumber (Get-RequiredLogValue $log ('^Precision\s*:\s*(' + $NumberPattern + ')\s*$') 'precision').Groups[1].Value
-    $recall = Convert-LogNumber (Get-RequiredLogValue $log ('^Recall\s*:\s*(' + $NumberPattern + ')\s*$') 'recall').Groups[1].Value
-    $f1 = Convert-LogNumber (Get-RequiredLogValue $log ('^F1\s*:\s*(' + $NumberPattern + ')\s*$') 'F1').Groups[1].Value
+    $tp = [int](Get-RequiredLogValue $log '^TP\s*:\s*(\d+)\s*$' 'TP' '^TP\s*:').Groups[1].Value
+    $fp = [int](Get-RequiredLogValue $log '^FP\s*:\s*(\d+)\s*$' 'FP' '^FP\s*:').Groups[1].Value
+    $fn = [int](Get-RequiredLogValue $log '^FN\s*:\s*(\d+)\s*$' 'FN' '^FN\s*:').Groups[1].Value
+    $precision = Convert-LogNumber (Get-RequiredLogValue $log ('^Precision\s*:\s*(' + $NumberPattern + ')\s*$') 'precision' '^Precision\s*:').Groups[1].Value
+    $recall = Convert-LogNumber (Get-RequiredLogValue $log ('^Recall\s*:\s*(' + $NumberPattern + ')\s*$') 'recall' '^Recall\s*:').Groups[1].Value
+    $f1 = Convert-LogNumber (Get-RequiredLogValue $log ('^F1\s*:\s*(' + $NumberPattern + ')\s*$') 'F1' '^F1\s*:').Groups[1].Value
     $maxFrame = [int](Get-RequiredLogValue $log '^Detector wall-clock max frame:\s*(\d+)\s*$' 'detector maximum frame').Groups[1].Value
 
     if (-not (Test-Path -LiteralPath $TimingPath -PathType Leaf)) {
@@ -301,7 +314,19 @@ Detector wall-clock max frame: 2
             throw 'Synthetic validator self-test failed the JSON round trip.'
         }
 
-        Write-Output 'VALIDATION_ONLY=PASS (valid summary/CSV and JSON round trip accepted; frame-count mismatch, incomplete summary, traceback, and frame sequence rejected; evaluator was not launched)'
+        foreach ($case in @(
+            [ordered]@{ name = 'duplicate TP'; text = $syntheticLog + "`nTP : 4`n" },
+            [ordered]@{ name = 'missing precision'; text = $syntheticLog.Replace('Precision         : 0.6000', '') },
+            [ordered]@{ name = 'malformed F1'; text = $syntheticLog.Replace('F1                : 0.6000', 'F1                : NaN') }
+        )) {
+            [IO.File]::WriteAllText($logPath, $case.text)
+            $rejected = $false
+            try { Test-ClipOutput -LogPath $logPath -TimingPath $csvPath -ExpectedFrames 5 | Out-Null }
+            catch { $rejected = $true }
+            if (-not $rejected) { throw "Synthetic validator self-test accepted $($case.name)." }
+        }
+
+        Write-Output 'VALIDATION_ONLY=PASS (valid summary/CSV and JSON round trip accepted; frame-count mismatch, incomplete summary, traceback, frame sequence, duplicate TP, missing precision, and malformed F1 rejected; evaluator was not launched)'
     }
     finally {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
@@ -315,6 +340,7 @@ if ($ValidateOnly) {
 
 $repoRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $repoRoot
+$expectedPythonExecutable = Join-Path $repoRoot '.hog\Scripts\python.exe'
 $runDirectory = $null
 $manifestPath = $null
 $summaryPath = $null
@@ -340,12 +366,31 @@ $runId = $null
 $revision = $null
 
 try {
+    if (-not (Test-Path -LiteralPath $expectedPythonExecutable -PathType Leaf)) {
+        throw "Project interpreter is missing: $expectedPythonExecutable"
+    }
+    $expectedPythonExecutable = (Resolve-Path -LiteralPath $expectedPythonExecutable).Path
+    $pythonMetadataJson = & $expectedPythonExecutable -c 'import sys, json, cv2; from src.config import DetectorConfig; from scripts.evaluate_video import IOU_THRESHOLD; c=DetectorConfig(); print(json.dumps({"executable":sys.executable,"version":sys.version.split()[0],"opencv_version":cv2.__version__,"config":{"scale":c.scale,"hit_threshold":c.hit_threshold,"win_stride":list(c.win_stride),"padding":list(c.padding),"nms_iou_threshold":c.nms_iou_threshold,"evaluation_iou_threshold":IOU_THRESHOLD}}))' 2>&1
+    $pythonExitCode = $LASTEXITCODE
+    if ($pythonExitCode -ne 0) {
+        throw "Project interpreter preflight failed (exit $pythonExitCode): $($pythonMetadataJson -join ' ')"
+    }
+    $pythonMetadata = ($pythonMetadataJson -join "`n") | ConvertFrom-Json
+    $actualPythonExecutable = [IO.Path]::GetFullPath([string]$pythonMetadata.executable)
+    if (-not [string]::Equals($actualPythonExecutable, $expectedPythonExecutable, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Interpreter identity mismatch: expected '$expectedPythonExecutable'; sys.executable reported '$actualPythonExecutable'."
+    }
+    if ($pythonMetadata.config.scale -ne 1.05 -or $pythonMetadata.config.hit_threshold -ne 1.0 -or $pythonMetadata.config.nms_iou_threshold -ne 0.3 -or $pythonMetadata.config.evaluation_iou_threshold -ne 0.5 -or ($pythonMetadata.config.win_stride -join ',') -cne '4,4' -or ($pythonMetadata.config.padding -join ',') -cne '8,8') {
+        throw 'Production detector or evaluation defaults differ from the requested reproducibility configuration; refusing to run.'
+    }
+
     $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ') + '_' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     New-Item -ItemType Directory -Path (Join-Path $repoRoot 'results/reproducibility') -Force | Out-Null
     $runDirectory = Join-Path $repoRoot (Join-Path 'results/reproducibility' ("full_" + $runId))
     New-Item -ItemType Directory -Path $runDirectory | Out-Null
     $manifestPath = Join-Path $runDirectory 'manifest.json'
     $summaryPath = Join-Path $runDirectory 'summary.json'
+    $completionPath = Join-Path $runDirectory 'completion.json'
 
     $startedAt = (Get-Date).ToUniversalTime().ToString('o')
     $manifest = [ordered]@{
@@ -397,27 +442,8 @@ try {
     $manifest.working_tree_status_at_start = $gitStatus
     Write-JsonFile -Path $manifestPath -Value $manifest
 
-    $pythonCommand = Get-Command python -CommandType Application -ErrorAction Stop
-    $pythonExecutable = $pythonCommand.Source
-    $pythonVersionOutput = & $pythonExecutable --version 2>&1
-    $pythonVersionExitCode = $LASTEXITCODE
-    if ($pythonVersionExitCode -ne 0) {
-        throw "Could not query Python version (exit $pythonVersionExitCode): $($pythonVersionOutput -join ' ')"
-    }
-    $manifest.python.executable = $pythonExecutable
-    $manifest.python.version = (($pythonVersionOutput -join ' ') -replace '^Python\s+', '').Trim()
-    Write-JsonFile -Path $manifestPath -Value $manifest
-
-    $pythonMetadataJson = & $pythonExecutable -c 'import sys, json, cv2; from src.config import DetectorConfig; from scripts.evaluate_video import IOU_THRESHOLD; c=DetectorConfig(); print(json.dumps({"executable":sys.executable,"version":sys.version.split()[0],"opencv_version":cv2.__version__,"config":{"scale":c.scale,"hit_threshold":c.hit_threshold,"win_stride":list(c.win_stride),"padding":list(c.padding),"nms_iou_threshold":c.nms_iou_threshold,"evaluation_iou_threshold":IOU_THRESHOLD}}))' 2>&1
-    $pythonExitCode = $LASTEXITCODE
-    if ($pythonExitCode -ne 0) {
-        throw "Python/OpenCV preflight failed (exit $pythonExitCode): $($pythonMetadataJson -join ' ')"
-    }
-    $pythonMetadata = ($pythonMetadataJson -join "`n") | ConvertFrom-Json
-    if ($pythonMetadata.config.scale -ne 1.05 -or $pythonMetadata.config.hit_threshold -ne 1.0 -or $pythonMetadata.config.nms_iou_threshold -ne 0.3 -or $pythonMetadata.config.evaluation_iou_threshold -ne 0.5 -or ($pythonMetadata.config.win_stride -join ',') -cne '4,4' -or ($pythonMetadata.config.padding -join ',') -cne '8,8') {
-        throw 'Production detector or evaluation defaults differ from the requested reproducibility configuration; refusing to run.'
-    }
-
+    $manifest.python.executable = $actualPythonExecutable
+    $manifest.python.version = [string]$pythonMetadata.version
     $manifest.python.opencv_version = $pythonMetadata.opencv_version
     Write-JsonFile -Path $manifestPath -Value $manifest
 
@@ -441,7 +467,7 @@ try {
         $exitCode = $null
         $clipError = $null
         try {
-            & $pythonExecutable -m scripts.evaluate_video `
+            & $expectedPythonExecutable -m scripts.evaluate_video `
                 --video $definition.video `
                 --annotations $definition.annotations `
                 --sample-every 1 `
@@ -473,7 +499,7 @@ try {
     }
 
     if (-not $runFailed) {
-        $manifest.status = 'completed'
+        $manifest.status = 'finalizing'
     }
     else {
         $manifest.status = 'failed'
@@ -487,7 +513,7 @@ try {
 
     $summary = [ordered]@{
         run_id = $runId
-        status = $manifest.status
+        status = 'finalizing'
         repository_revision = $revision
         python = $manifest.python
         started_at_utc = $manifest.started_at_utc
@@ -498,8 +524,13 @@ try {
         clips = @($manifest.clips)
     }
     try {
+        Write-JsonFile -Path $manifestPath -Value $manifest
         Write-JsonFile -Path $summaryPath -Value $summary
-        $null = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+        $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+        if ($manifestCheck.status -ne 'finalizing' -or $summaryCheck.status -ne 'finalizing' -or $manifestCheck.run_id -ne $summaryCheck.run_id) {
+            throw 'Pre-completion artifacts failed their finalizing-state validation.'
+        }
     }
     catch {
         $runFailed = $true
@@ -519,7 +550,32 @@ try {
         Write-Error $failureMessage
     }
     else {
+        # Publish status in an order that cannot produce a completed summary while
+        # the manifest still says running. completion.json is the authority.
+        $manifest.status = 'completed'
         Write-JsonFile -Path $manifestPath -Value $manifest
+        $summary.status = 'completed'
+        Write-JsonFile -Path $summaryPath -Value $summary
+        $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+        $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+        if ($manifestCheck.status -ne 'completed' -or $summaryCheck.status -ne 'completed' -or $manifestCheck.run_id -ne $summaryCheck.run_id -or $manifestCheck.repository_revision -ne $summaryCheck.repository_revision) {
+            throw 'Completed manifest and summary did not validate consistently.'
+        }
+        $completion = [ordered]@{
+            run_id = $runId
+            status = 'completed'
+            manifest = 'manifest.json'
+            summary = 'summary.json'
+            repository_revision = $revision
+            completed_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+        }
+        $completionTemp = Join-Path $runDirectory 'completion.json.tmp'
+        Write-JsonFile -Path $completionTemp -Value $completion
+        $completionCheck = Get-Content -LiteralPath $completionTemp -Raw | ConvertFrom-Json
+        if ($completionCheck.status -ne 'completed' -or $completionCheck.run_id -ne $runId) {
+            throw 'Completion marker failed validation.'
+        }
+        [IO.File]::Move($completionTemp, $completionPath)
         Write-Output "RUN_STATUS=COMPLETED"
         Write-Output "RUN_DIRECTORY=$runDirectory"
     }
