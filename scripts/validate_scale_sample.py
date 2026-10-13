@@ -26,6 +26,13 @@ BASELINE = 1.05
 CANDIDATE = 1.08
 ANOMALOUS_FOURWAY_ROW = 1
 
+# The original 5-frame visual sample and the first 20-frame-per-clip sample.
+PRIOR_SAMPLES = {
+    "crosswalk": {1, 21, 41, 61, 80, 95, 100, 120, 140, 160, 180, 189, 199, 219, 239, 259, 279, 284, 299, 318, 338, 358, 378},
+    "fourway": {1, 68, 136, 203, 270, 321, 338, 405, 473, 540, 607, 641, 675, 742, 809, 877, 944, 961, 1012, 1079, 1146, 1214, 1281},
+    "night": {1, 31, 60, 90, 120, 142, 149, 179, 209, 238, 268, 283, 298, 328, 357, 387, 417, 424, 446, 476, 506, 535, 565},
+}
+
 
 def select_frames(annotation_count, count=20):
     if annotation_count < count:
@@ -33,6 +40,17 @@ def select_frames(annotation_count, count=20):
     selected = [1 + round(i * (annotation_count - 1) / (count - 1)) for i in range(count)]
     if len(set(selected)) != count:
         raise ValueError("Frame selection did not produce unique frames")
+    return selected
+
+
+def select_disjoint_frames(annotation_count, forbidden_frames, count=20):
+    """Select evenly spread unique 1-based rows outside prior samples."""
+    eligible = [frame for frame in range(1, annotation_count + 1) if frame not in forbidden_frames]
+    if len(eligible) < count:
+        raise ValueError(f"Need {count} eligible rows, found {len(eligible)}")
+    selected = [eligible[round(i * (len(eligible) - 1) / (count - 1))] for i in range(count)]
+    if len(set(selected)) != count or set(selected) & set(forbidden_frames):
+        raise ValueError("Disjoint frame selection is not unique or overlaps exclusions")
     return selected
 
 
@@ -50,23 +68,18 @@ def fmt_metrics(m):
     return f"{m['tp']}/{m['fp']}/{m['fn']} | {m['precision']:.4f} | {m['recall']:.4f} | {m['f1']:.4f}"
 
 
-def run(output_dir):
-    output_dir.mkdir(parents=True, exist_ok=False)
+def run(output_dir, *, disjoint=False, preflight_only=False):
     started_all = time.perf_counter()
-    configs = {
-        "1.05": HOGPedestrianDetector(replace(DetectorConfig(), scale=BASELINE)),
-        "1.08": HOGPedestrianDetector(replace(DetectorConfig(), scale=CANDIDATE)),
-    }
-    records = {key: {} for key in configs}
-    clip_elapsed = {clip: {key: 0.0 for key in configs} for clip in CLIPS}
-    clip_decode_elapsed = {}
     selection = {}
     warnings_seen = []
 
     # Preflight annotation geometry against actual decoded frames before any scoring.
     for clip in CLIPS:
         annotations = load_annotations(ROOT / "dataset" / f"{clip}.csv")
-        selected = select_frames(len(annotations))
+        selected = (
+            select_disjoint_frames(len(annotations), PRIOR_SAMPLES[clip])
+            if disjoint else select_frames(len(annotations))
+        )
         selection[clip] = selected
         cap = cv2.VideoCapture(str(ROOT / "dataset" / f"{clip}.avi"))
         if not cap.isOpened():
@@ -91,6 +104,24 @@ def run(output_dir):
                         print(f"ANNOTATION WARNING: {message}")
         finally:
             cap.release()
+
+    if preflight_only:
+        return selection, warnings_seen
+
+    if disjoint:
+        for clip in CLIPS:
+            overlap = set(selection[clip]) & PRIOR_SAMPLES[clip]
+            if overlap:
+                raise AssertionError(f"{clip}: selected rows overlap prior samples: {sorted(overlap)}")
+
+    output_dir.mkdir(parents=True, exist_ok=False)
+    configs = {
+        "1.05": HOGPedestrianDetector(replace(DetectorConfig(), scale=BASELINE)),
+        "1.08": HOGPedestrianDetector(replace(DetectorConfig(), scale=CANDIDATE)),
+    }
+    records = {key: {} for key in configs}
+    clip_elapsed = {clip: {key: 0.0 for key in configs} for clip in CLIPS}
+    clip_decode_elapsed = {}
 
     # Re-decode selected frames once, then score the same decoded frame under both scales.
     for clip in CLIPS:
@@ -138,24 +169,30 @@ def run(output_dir):
         clip_decode_elapsed[clip] = decode_elapsed
 
         # Drop decoded image memory after writing the representative overlays below.
-        _write_clip_overlays(clip, retained_frames, records, annotations, output_dir)
+        _write_clip_overlays(
+            clip, retained_frames, records, annotations, output_dir,
+            changed_only=disjoint,
+        )
         del retained_frames
 
-    report = _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings_seen)
+    report = _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings_seen, disjoint=disjoint)
     (output_dir / "summary.md").write_text(report, encoding="utf-8")
     print(f"Wrote {output_dir / 'summary.md'}")
     print(f"Total elapsed including shared decode, inference, scoring, and output: {time.perf_counter() - started_all:.2f} s")
 
 
-def _write_clip_overlays(clip, frames, records, annotations, output_dir):
+def _write_clip_overlays(clip, frames, records, annotations, output_dir, *, changed_only=False):
     # Prefer one example for each observed category; same frame rendered at both scales.
     keys = [(clip, frame) for frame in frames]
     recovered = lost = fp_example = None
+    changed = []
     for key in keys:
         if clip == "fourway" and key[1] == ANOMALOUS_FOURWAY_ROW:
             continue
         b = records["1.05"][key]["details"]
         c = records["1.08"][key]["details"]
+        if _match_signature(b) != _match_signature(c):
+            changed.append(key)
         if recovered is None and len(c["matches"]) > len(b["matches"]):
             recovered = key
         if lost is None and len(b["matches"]) > len(c["matches"]):
@@ -168,6 +205,21 @@ def _write_clip_overlays(clip, frames, records, annotations, output_dir):
             chosen.append((kind, key[1]))
     clip_dir = output_dir / clip
     clip_dir.mkdir(parents=True, exist_ok=True)
+    if changed_only:
+        for _, frame_number in changed:
+            for label in ("1.05", "1.08"):
+                entry = records[label][(clip, frame_number)]
+                image = draw_diagnostic(
+                    frames[frame_number], clip, frame_number, annotations[frame_number],
+                    entry["detections"], entry["details"],
+                )
+                height, width = image.shape[:2]
+                cv2.rectangle(image, (0, 32), (width, 62), (0, 0, 0), -1)
+                cv2.putText(image, f"outcome differs | scale={label}", (10, 54), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                path = clip_dir / f"frame_{frame_number:06d}_scale_{label}.jpg"
+                if not cv2.imwrite(str(path), image, [cv2.IMWRITE_JPEG_QUALITY, 94]):
+                    raise RuntimeError(f"Could not write {path}")
+        return
     for kind, frame_number in chosen:
         for label in ("1.05", "1.08"):
             entry = records[label][(clip, frame_number)]
@@ -183,13 +235,21 @@ def _write_clip_overlays(clip, frames, records, annotations, output_dir):
                 raise RuntimeError(f"Could not write {path}")
 
 
-def _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings_seen):
+def _match_signature(details):
+    """Compare matched GT assignments and unmatched GT/prediction sets."""
+    matches = tuple(sorted(item["ground_truth_index"] for item in details["matches"]))
+    false_positives = len(details["false_positives"])
+    false_negatives = tuple(sorted(item["ground_truth_index"] for item in details["false_negatives"]))
+    return matches, false_positives, false_negatives
+
+
+def _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings_seen, *, disjoint=False):
     lines = [
-        "# Scale 1.08 validation: stratified diagnostic sample", "",
+        "# Scale 1.08 validation: disjoint diagnostic sample" if disjoint else "# Scale 1.08 validation: stratified diagnostic sample", "",
         "Diagnostic subset only; not full-dataset performance. Each clip contributes 20 evenly distributed 1-based annotation rows (60 frames inferred under each setting). The same decoded frame is passed to both configurations.",
         "", "Only `scale` changes: 1.05 vs 1.08. `hit_threshold=1.0`, stride (4,4), padding (8,8), NMS IoU 0.3, and evaluator one-to-one confidence-ordered IoU >= 0.5 matching remain fixed.",
-        "", "Metrics exclude only the known anomalous Fourway annotation row/frame 1. That frame was still inferred under both settings and its unchanged annotation comparison is reported separately. No other selected annotations are omitted. Raw/post-NMS counts in primary totals exclude that frame to keep denominators aligned.",
-        "", "Detector-call wall totals align with primary metrics: 20 Crosswalk + 19 Fourway + 20 Night calls; Fourway row 1 was inferred but its detector-call timing is omitted from primary totals with the known annotation anomaly. The per-clip experiment elapsed is a broader stopwatch that includes all 20 frames, including that row, plus NMS and matching; shared decode is reported separately. Combined detector-call wall time therefore covers 59 scored frames, while combined experiment elapsed covers all 60 inference frames.",
+        "", ("The frame selector excludes every frame from the original 15-frame sample and the preceding 60-frame sample. Known anomalous Fourway row 1 is also outside the selected set, so no annotation was excluded from this primary comparison. All selected warning-flagged annotations remain included." if disjoint else "Metrics exclude only the known anomalous Fourway annotation row/frame 1. That frame was still inferred under both settings and its unchanged annotation comparison is reported separately. No other selected annotations are omitted. Raw/post-NMS counts in primary totals exclude that frame to keep denominators aligned."),
+        "", ("Detector-call wall totals cover all 20 selected frames per clip (60 calls per setting). Per-clip experiment elapsed also includes NMS and matching; shared decode is reported separately." if disjoint else "Detector-call wall totals align with primary metrics: 20 Crosswalk + 19 Fourway + 20 Night calls; Fourway row 1 was inferred but its detector-call timing is omitted from primary totals with the known annotation anomaly. The per-clip experiment elapsed is a broader stopwatch that includes all 20 frames, including that row, plus NMS and matching; shared decode is reported separately. Combined detector-call wall time therefore covers 59 scored frames, while combined experiment elapsed covers all 60 inference frames."),
         "", "## Aggregate metrics", "", "TP/FP/FN | Precision | Recall | F1", "", "| Clip | Scale | TP/FP/FN | Precision | Recall | F1 | Raw detections | Post-NMS | Detector wall ms | Experiment s | Shared decode s |", "|---|---:|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for clip in (*CLIPS, "COMBINED"):
@@ -209,20 +269,22 @@ def _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings
             lines.append(f"| {clip} | {label} | {agg['tp']}/{agg['fp']}/{agg['fn']} | {agg['precision']:.4f} | {agg['recall']:.4f} | {agg['f1']:.4f} | {raw} | {post} | {detector_ms:.1f} | {exp_s:.2f} | {decode_s:.3f} |")
 
     fourway_key = ("fourway", ANOMALOUS_FOURWAY_ROW)
-    lines.extend(["", "## Known anomalous Fourway row 1 (separate, not in primary totals)", "", "| Scale | TP | FP | FN | Raw | Post-NMS |", "|---:|---:|---:|---:|---:|---:|"])
-    for label in ("1.05", "1.08"):
-        entry = records[label][fourway_key]
-        m = metrics(entry["details"])
-        lines.append(f"| {label} | {m['tp']} | {m['fp']} | {m['fn']} | {entry['raw']} | {entry['post']} |")
+    if ANOMALOUS_FOURWAY_ROW in selection["fourway"]:
+        lines.extend(["", "## Known anomalous Fourway row 1 (separate, not in primary totals)", "", "| Scale | TP | FP | FN | Raw | Post-NMS |", "|---:|---:|---:|---:|---:|---:|"])
+        for label in ("1.05", "1.08"):
+            entry = records[label][fourway_key]
+            m = metrics(entry["details"])
+            lines.append(f"| {label} | {m['tp']} | {m['fp']} | {m['fn']} | {entry['raw']} | {entry['post']} |")
 
     lines.extend(["", "## Annotation preflight", ""])
     for clip in CLIPS:
         lines.append(f"- **{clip}:** frames `{', '.join(map(str, selection[clip]))}`.")
-    lines.append(f"- Warning-flagged selected annotations: {len(warnings_seen)}. They remain included except the explicitly excluded Fourway row 1.")
+    lines.append(f"- Warning-flagged selected annotations: {len(warnings_seen)}. All selected flagged rows remain included; any explicit exclusion is listed above.")
     for warning in warnings_seen:
         lines.append(f"  - `{warning}`")
 
-    lines.extend(["", "## Per-frame comparison", "", "Rows list both scales as `TP/FP/FN`, raw->post-NMS, and matched IoUs. FP means unmatched by the evaluator at IoU >= 0.5; visual FP examples can still depict a pedestrian whose predicted box is poorly localized. Anomaly row 1 remains shown separately and excluded from primary analysis.", "", "| Clip | Frame | GT | Scale 1.05 TP/FP/FN | raw->post | matched IoU | Scale 1.08 TP/FP/FN | raw->post | matched IoU | Change |", "|---|---:|---:|---|---:|---|---|---:|---|---|"])
+    frame_intro = "Rows list both scales as `TP/FP/FN`, raw->post-NMS, and matched IoUs. FP means unmatched by the evaluator at IoU >= 0.5; visual FP examples can still depict a pedestrian whose predicted box is poorly localized. No selected annotation rows were excluded." if disjoint else "Rows list both scales as `TP/FP/FN`, raw->post-NMS, and matched IoUs. FP means unmatched by the evaluator at IoU >= 0.5; visual FP examples can still depict a pedestrian whose predicted box is poorly localized. Anomaly row 1 remains shown separately and excluded from primary analysis."
+    lines.extend(["", "## Per-frame comparison", "", frame_intro, "", "| Clip | Frame | GT | Scale 1.05 TP/FP/FN | raw->post | matched IoU | Scale 1.08 TP/FP/FN | raw->post | matched IoU | Change |", "|---|---:|---:|---|---:|---|---|---:|---|---|"])
     for clip in CLIPS:
         for frame in selection[clip]:
             key = (clip, frame)
@@ -254,15 +316,18 @@ def _make_report(selection, records, clip_elapsed, clip_decode_elapsed, warnings
             outcome = "recovered TP" if mc["tp"] > mb["tp"] else "lost TP" if mc["tp"] < mb["tp"] else "FP count changed"
             lines.append(f"| {clip} | {frame} | {best_iou(b):.3f} | {best_iou(c):.3f} | {outcome} |")
     lines.extend(["", "A recovered match means a candidate-scale match on ground truth that is unmatched at baseline; a lost match is the reverse. Review the paired overlays in this directory before drawing localization conclusions.", "", "## Visual overlays", ""])
-    lines.append("Paired baseline/candidate overlays are saved under the clip subdirectories; filenames identify recovered, lost, or false-positive examples when such cases exist in that clip.")
+    overlay_text = "Paired overlays are saved only for frames where the matched-GT/FP/FN outcome signature differs; frame numbers are in the file names." if disjoint else "Paired baseline/candidate overlays are saved under the clip subdirectories; filenames identify recovered, lost, or false-positive examples when such cases exist in that clip."
+    lines.append(overlay_text)
     return "\n".join(lines) + "\n"
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output-dir", type=Path, default=ROOT / "results" / "diagnostics" / "scale_1_08_validation")
+    parser.add_argument("--disjoint", action="store_true", help="Use a new sample disjoint from the original 15 and prior 60 frames; save overlays only where match outcomes differ")
+    parser.add_argument("--preflight-only", action="store_true", help="Select and warning-check frames without running detector inference")
     args = parser.parse_args()
-    run(args.output_dir)
+    run(args.output_dir, disjoint=args.disjoint, preflight_only=args.preflight_only)
 
 
 if __name__ == "__main__":
