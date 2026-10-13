@@ -1,0 +1,632 @@
+[
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1457.369,
+    "detector_wall_ms": 1457.37,
+    "process_cpu_ms": 8156.25,
+    "raw_count": 4,
+    "nms_count": 4,
+    "confidence_min": 0.25493090134114027,
+    "confidence_median": 0.904804497025907,
+    "confidence_max": 3.3149466729955748,
+    "tp": 1,
+    "fp": 3,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_1_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1372.055,
+    "detector_wall_ms": 1372.055,
+    "process_cpu_ms": 7781.25,
+    "raw_count": 4,
+    "nms_count": 4,
+    "confidence_min": 0.25493090134114027,
+    "confidence_median": 0.904804497025907,
+    "confidence_max": 3.3149466729955748,
+    "tp": 1,
+    "fp": 3,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_1_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.317,
+    "hog_ms": 16.861,
+    "detector_wall_ms": 17.178,
+    "process_cpu_ms": 140.625,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 0.7759503065026365,
+    "confidence_median": 0.7759503065026365,
+    "confidence_max": 0.7759503065026365,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_1_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.293,
+    "hog_ms": 14.632,
+    "detector_wall_ms": 14.925,
+    "process_cpu_ms": 171.875,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 0.7759503065026365,
+    "confidence_median": 0.7759503065026365,
+    "confidence_max": 0.7759503065026365,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_1_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1397.351,
+    "detector_wall_ms": 1397.351,
+    "process_cpu_ms": 8703.125,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 0.904804497025907,
+    "confidence_median": 3.3149466729955748,
+    "confidence_max": 3.3149466729955748,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_1_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.0,
+    "hog_ms": 1468.855,
+    "detector_wall_ms": 1468.856,
+    "process_cpu_ms": 8500.0,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 3.3149466729955748,
+    "confidence_median": 3.3149466729955748,
+    "confidence_max": 3.3149466729955748,
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_1_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1544.204,
+    "detector_wall_ms": 1544.205,
+    "process_cpu_ms": 8953.125,
+    "raw_count": 7,
+    "nms_count": 6,
+    "confidence_min": 0.34743114630691707,
+    "confidence_median": 0.7846017340198159,
+    "confidence_max": 1.287451601077919,
+    "tp": 0,
+    "fp": 6,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_283_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 5040.933,
+    "detector_wall_ms": 5040.934,
+    "process_cpu_ms": 20640.625,
+    "raw_count": 7,
+    "nms_count": 6,
+    "confidence_min": 0.34743114630691707,
+    "confidence_median": 0.7846017340198159,
+    "confidence_max": 1.287451601077919,
+    "tp": 0,
+    "fp": 6,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_283_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.756,
+    "hog_ms": 43.126,
+    "detector_wall_ms": 43.882,
+    "process_cpu_ms": 359.375,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 0.3248971770517528,
+    "confidence_median": 1.4701834804727696,
+    "confidence_max": 1.4701834804727696,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_283_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.96,
+    "hog_ms": 39.714,
+    "detector_wall_ms": 40.674,
+    "process_cpu_ms": 203.125,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 0.3248971770517528,
+    "confidence_median": 1.4701834804727696,
+    "confidence_max": 1.4701834804727696,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_night\\night_frame_283_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 5315.584,
+    "detector_wall_ms": 5315.585,
+    "process_cpu_ms": 23031.25,
+    "raw_count": 2,
+    "nms_count": 1,
+    "confidence_min": 0.8437449629418552,
+    "confidence_median": 1.287451601077919,
+    "confidence_max": 1.287451601077919,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_283_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 4266.954,
+    "detector_wall_ms": 4266.956,
+    "process_cpu_ms": 25781.25,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_283_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 5108.968,
+    "detector_wall_ms": 5108.97,
+    "process_cpu_ms": 26078.125,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 0.7032889439724386,
+    "confidence_median": 0.7032889439724386,
+    "confidence_max": 0.7032889439724386,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4895.84,
+    "detector_wall_ms": 4895.842,
+    "process_cpu_ms": 27421.875,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 0.7032889439724386,
+    "confidence_median": 0.7032889439724386,
+    "confidence_max": 0.7032889439724386,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.651,
+    "hog_ms": 35.219,
+    "detector_wall_ms": 35.869,
+    "process_cpu_ms": 250.0,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.598,
+    "hog_ms": 33.522,
+    "detector_wall_ms": 34.12,
+    "process_cpu_ms": 234.375,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4752.149,
+    "detector_wall_ms": 4752.15,
+    "process_cpu_ms": 26125.0,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 0.7032889439724386,
+    "confidence_median": 0.7032889439724386,
+    "confidence_max": 0.7032889439724386,
+    "tp": 0,
+    "fp": 1,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 4705.976,
+    "detector_wall_ms": 4705.977,
+    "process_cpu_ms": 26484.375,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_night\\night_frame_565_current_hit1_0.png"
+  }
+]

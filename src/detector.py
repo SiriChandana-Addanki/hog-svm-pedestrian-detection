@@ -1,6 +1,7 @@
 from time import perf_counter, process_time
 
 import cv2
+import numpy as np
 
 from src.config import DetectorConfig
 
@@ -43,7 +44,7 @@ class HOGPedestrianDetector:
                     int(w),
                     int(h),
                 ],
-                "confidence": float(weight),
+                "confidence": float(np.asarray(weight).item()),
             }
             for (x, y, w, h), weight in zip(boxes, weights)
         ]

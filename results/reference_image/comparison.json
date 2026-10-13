@@ -1,0 +1,194 @@
+[
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      1243,
+      819
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 655.109,
+    "detector_wall_ms": 655.11,
+    "process_cpu_ms": 3125.0,
+    "raw_count": 13,
+    "nms_count": 13,
+    "confidence_min": 0.3305834790226072,
+    "confidence_median": 0.5636978893307969,
+    "confidence_max": 2.8888810778735206,
+    "visual": "results\\reference_image\\pedestrian_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      1243,
+      819
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 644.149,
+    "detector_wall_ms": 644.149,
+    "process_cpu_ms": 2906.25,
+    "raw_count": 13,
+    "nms_count": 13,
+    "confidence_min": 0.2916818947996944,
+    "confidence_median": 0.5378925050608814,
+    "confidence_max": 2.8888810778735206,
+    "visual": "results\\reference_image\\pedestrian_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      400,
+      263
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.32180209171359614,
+    "preprocess_ms": 0.397,
+    "hog_ms": 33.853,
+    "detector_wall_ms": 34.25,
+    "process_cpu_ms": 93.75,
+    "raw_count": 4,
+    "nms_count": 3,
+    "confidence_min": 0.3279919398482889,
+    "confidence_median": 1.7567736222408712,
+    "confidence_max": 2.7626927162054926,
+    "visual": "results\\reference_image\\pedestrian_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      400,
+      263
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.32180209171359614,
+    "preprocess_ms": 0.292,
+    "hog_ms": 32.073,
+    "detector_wall_ms": 32.365,
+    "process_cpu_ms": 109.375,
+    "raw_count": 3,
+    "nms_count": 2,
+    "confidence_min": 0.45269848161842674,
+    "confidence_median": 0.7861900569405407,
+    "confidence_max": 2.7626927162054926,
+    "visual": "results\\reference_image\\pedestrian_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      1243,
+      819
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 635.694,
+    "detector_wall_ms": 635.695,
+    "process_cpu_ms": 2984.375,
+    "raw_count": 4,
+    "nms_count": 4,
+    "confidence_min": 0.8212937312200665,
+    "confidence_median": 1.1451627193018794,
+    "confidence_max": 2.3044674526900053,
+    "visual": "results\\reference_image\\pedestrian_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1243,
+      819
+    ],
+    "detector_input_size": [
+      1243,
+      819
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.0,
+    "hog_ms": 642.39,
+    "detector_wall_ms": 642.391,
+    "process_cpu_ms": 3625.0,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 2.3044674526900053,
+    "confidence_median": 2.3044674526900053,
+    "confidence_max": 2.3044674526900053,
+    "visual": "results\\reference_image\\pedestrian_current_hit1_0.png"
+  }
+]

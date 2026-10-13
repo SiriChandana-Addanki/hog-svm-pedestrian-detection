@@ -1,0 +1,1052 @@
+[
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1365.484,
+    "detector_wall_ms": 1365.485,
+    "process_cpu_ms": 6625.0,
+    "raw_count": 4,
+    "nms_count": 3,
+    "confidence_min": 0.27569300821051,
+    "confidence_median": 0.5227847250644118,
+    "confidence_max": 0.684787375619635,
+    "tp": 0,
+    "fp": 3,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.005,
+    "hog_ms": 1311.869,
+    "detector_wall_ms": 1311.875,
+    "process_cpu_ms": 8203.125,
+    "raw_count": 4,
+    "nms_count": 3,
+    "confidence_min": 0.27569300821051,
+    "confidence_median": 0.5227847250644118,
+    "confidence_max": 0.684787375619635,
+    "tp": 0,
+    "fp": 3,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.422,
+    "hog_ms": 20.305,
+    "detector_wall_ms": 20.727,
+    "process_cpu_ms": 140.625,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.373,
+    "hog_ms": 14.934,
+    "detector_wall_ms": 15.307,
+    "process_cpu_ms": 109.375,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1371.562,
+    "detector_wall_ms": 1371.563,
+    "process_cpu_ms": 7875.0,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1353.066,
+    "detector_wall_ms": 1353.067,
+    "process_cpu_ms": 8281.25,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_1_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1358.479,
+    "detector_wall_ms": 1358.479,
+    "process_cpu_ms": 7875.0,
+    "raw_count": 3,
+    "nms_count": 3,
+    "confidence_min": 0.0688827745616436,
+    "confidence_median": 1.2348714722320437,
+    "confidence_max": 1.4031196218275,
+    "tp": 0,
+    "fp": 3,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 1505.537,
+    "detector_wall_ms": 1505.537,
+    "process_cpu_ms": 7421.875,
+    "raw_count": 3,
+    "nms_count": 3,
+    "confidence_min": 0.0688827745616436,
+    "confidence_median": 1.2348714722320437,
+    "confidence_max": 1.4031196218275,
+    "tp": 0,
+    "fp": 3,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.413,
+    "hog_ms": 17.068,
+    "detector_wall_ms": 17.481,
+    "process_cpu_ms": 140.625,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.281,
+    "hog_ms": 14.962,
+    "detector_wall_ms": 15.243,
+    "process_cpu_ms": 31.25,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 3537.052,
+    "detector_wall_ms": 3537.053,
+    "process_cpu_ms": 16312.5,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 1.2348714722320437,
+    "confidence_median": 1.4031196218275,
+    "confidence_max": 1.4031196218275,
+    "tp": 0,
+    "fp": 2,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 5148.442,
+    "detector_wall_ms": 5148.443,
+    "process_cpu_ms": 28562.5,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_100_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4984.609,
+    "detector_wall_ms": 4984.61,
+    "process_cpu_ms": 24375.0,
+    "raw_count": 5,
+    "nms_count": 5,
+    "confidence_min": 0.16891946061514318,
+    "confidence_median": 0.4606575956568122,
+    "confidence_max": 2.5123810472432524,
+    "tp": 1,
+    "fp": 4,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 4841.182,
+    "detector_wall_ms": 4841.184,
+    "process_cpu_ms": 26921.875,
+    "raw_count": 5,
+    "nms_count": 5,
+    "confidence_min": 0.16891946061514318,
+    "confidence_median": 0.4606575956568122,
+    "confidence_max": 2.5123810472432524,
+    "tp": 1,
+    "fp": 4,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.654,
+    "hog_ms": 38.835,
+    "detector_wall_ms": 39.489,
+    "process_cpu_ms": 296.875,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.753,
+    "hog_ms": 36.555,
+    "detector_wall_ms": 37.308,
+    "process_cpu_ms": 203.125,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4839.953,
+    "detector_wall_ms": 4839.955,
+    "process_cpu_ms": 26343.75,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 0.8128711606841534,
+    "confidence_median": 2.5123810472432524,
+    "confidence_max": 2.5123810472432524,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4318.767,
+    "detector_wall_ms": 4318.768,
+    "process_cpu_ms": 23703.125,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 2.5123810472432524,
+    "confidence_median": 2.5123810472432524,
+    "confidence_max": 2.5123810472432524,
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_200_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4393.747,
+    "detector_wall_ms": 4393.748,
+    "process_cpu_ms": 23750.0,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 1.0790562292095274,
+    "confidence_median": 2.0625134594738483,
+    "confidence_max": 2.0625134594738483,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 4340.451,
+    "detector_wall_ms": 4340.453,
+    "process_cpu_ms": 24281.25,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 1.0790562292095274,
+    "confidence_median": 2.0625134594738483,
+    "confidence_max": 2.0625134594738483,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.679,
+    "hog_ms": 37.063,
+    "detector_wall_ms": 37.741,
+    "process_cpu_ms": 281.25,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.609,
+    "hog_ms": 35.076,
+    "detector_wall_ms": 35.685,
+    "process_cpu_ms": 187.5,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4114.234,
+    "detector_wall_ms": 4114.235,
+    "process_cpu_ms": 23375.0,
+    "raw_count": 2,
+    "nms_count": 2,
+    "confidence_min": 1.0790562292095274,
+    "confidence_median": 2.0625134594738483,
+    "confidence_max": 2.0625134594738483,
+    "tp": 1,
+    "fp": 1,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4380.059,
+    "detector_wall_ms": 4380.059,
+    "process_cpu_ms": 23093.75,
+    "raw_count": 1,
+    "nms_count": 1,
+    "confidence_min": 2.0625134594738483,
+    "confidence_median": 2.0625134594738483,
+    "confidence_max": 2.0625134594738483,
+    "tp": 1,
+    "fp": 0,
+    "fn": 0,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_300_current_hit1_0.png"
+  },
+  {
+    "variant": "current_original_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.002,
+    "hog_ms": 4262.219,
+    "detector_wall_ms": 4262.221,
+    "process_cpu_ms": 24515.625,
+    "raw_count": 5,
+    "nms_count": 5,
+    "confidence_min": 0.16669014655053616,
+    "confidence_median": 0.28861221857368946,
+    "confidence_max": 0.7970292058307678,
+    "tp": 0,
+    "fp": 5,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_current_original_pad8.png"
+  },
+  {
+    "variant": "original_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 3907.026,
+    "detector_wall_ms": 3907.027,
+    "process_cpu_ms": 22796.875,
+    "raw_count": 5,
+    "nms_count": 5,
+    "confidence_min": 0.16669014655053616,
+    "confidence_median": 0.28861221857368946,
+    "confidence_max": 0.7970292058307678,
+    "tp": 0,
+    "fp": 5,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_original_pad4.png"
+  },
+  {
+    "variant": "resize400_pad8",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.635,
+    "hog_ms": 42.552,
+    "detector_wall_ms": 43.186,
+    "process_cpu_ms": 265.625,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_resize400_pad8.png"
+  },
+  {
+    "variant": "reference_resize400_pad4",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      400,
+      225
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      4,
+      4
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.0,
+    "resize_scale": 0.20833333333333334,
+    "preprocess_ms": 0.541,
+    "hog_ms": 34.784,
+    "detector_wall_ms": 35.325,
+    "process_cpu_ms": 218.75,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_reference_resize400_pad4.png"
+  },
+  {
+    "variant": "current_hit0_5",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 0.5,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4221.102,
+    "detector_wall_ms": 4221.104,
+    "process_cpu_ms": 22828.125,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_current_hit0_5.png"
+  },
+  {
+    "variant": "current_hit1_0",
+    "input_size": [
+      1920,
+      1080
+    ],
+    "detector_input_size": [
+      1920,
+      1080
+    ],
+    "win_stride": [
+      4,
+      4
+    ],
+    "padding": [
+      8,
+      8
+    ],
+    "scale": 1.05,
+    "hit_threshold": 1.0,
+    "resize_scale": 1.0,
+    "preprocess_ms": 0.001,
+    "hog_ms": 4249.248,
+    "detector_wall_ms": 4249.249,
+    "process_cpu_ms": 23421.875,
+    "raw_count": 0,
+    "nms_count": 0,
+    "confidence_min": null,
+    "confidence_median": null,
+    "confidence_max": null,
+    "tp": 0,
+    "fp": 0,
+    "fn": 1,
+    "visual": "results\\reference_crosswalk\\crosswalk_frame_378_current_hit1_0.png"
+  }
+]

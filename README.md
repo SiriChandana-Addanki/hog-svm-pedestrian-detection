@@ -52,15 +52,15 @@ python -m scripts.benchmark --input examples/input/pedestrian.png --runs 20
 
 Use the median, p95, and p99 as the primary summaries of detector wall-clock latency; wall-clock stalls can make the mean and maximum unrepresentative. The evaluator always prints maximum and outlier counts for transparency. Those values are raw measurements, not estimates of steady-state inference speed. Results depend on the machine and run conditions; rerun the commands above for a local measurement.
 
-Full evaluation on the included clips (detector wall-clock latency, milliseconds):
+Full evaluation on the included clips with the current `hit_threshold=1.0` (latency in ms; IoU threshold 0.5):
 
-| Clip | Evaluated frames | Median | P95 | P99 | Calls > 2×P95 |
-|---|---:|---:|---:|---:|---:|
-| Crosswalk | 378 | 3,777.595 | 4,321.959 | 5,036.236 | 2 |
-| Fourway | 1,281 | 3,223.860 | 4,293.305 | 5,577.873 | 5 |
-| Night | 565 | 3,306.285 | 4,507.020 | 51,131.841 | 21 |
+| Clip | Frames | TP | FP | FN | Precision | Recall | F1 | Wall median | Wall P95 | Wall P99 | Calls > 2×P95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Crosswalk | 378 | 169 | 71 | 209 | 0.7042 | 0.4471 | 0.5469 | 3,211.121 | 5,299.441 | 6,469.235 | 0 |
+| Fourway | 1,281 | 425 | 142 | 856 | 0.7496 | 0.3318 | 0.4600 | 3,398.992 | 4,662.867 | 5,866.237 | 5 |
+| Night | 565 | 274 | 60 | 291 | 0.8204 | 0.4850 | 0.6096 | 3,546.670 | 5,337.880 | 7,418.991 | 4 |
 
-The included crosswalk, fourway, and night clips have separate scene characteristics. Do not generalize one clip's detection metrics to the others.
+Latency percentiles summarize detector wall-clock time; they exclude decode time because decoding is measured separately. The evaluator still prints and retains each distribution's raw maximum, but maximum values are not representative inference latency. The included clips have separate scene characteristics; do not generalize one clip's detection metrics to the others. These measurements are machine- and run-condition-dependent.
 
 ## Limitations
 
