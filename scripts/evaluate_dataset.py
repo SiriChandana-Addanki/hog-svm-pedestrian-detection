@@ -8,6 +8,7 @@ import pandas as pd
 
 from src.detector import HOGPedestrianDetector
 from src.config import DetectorConfig
+from src.annotation_validation import warn_if_extreme_annotation
 
 
 DATASETS = ["crosswalk", "fourway", "night"]
@@ -154,6 +155,14 @@ def evaluate_dataset(name):
                 int(row["h"]),
             ]
         ]
+
+        for x, y, width, height in ground_truth:
+            warn_if_extreme_annotation(
+                frame_count + 1,
+                [x, y, x + width, y + height],
+                frame.shape,
+                source=csv_path,
+            )
 
         for hit_threshold in HIT_THRESHOLDS:
             detector = detectors[hit_threshold]

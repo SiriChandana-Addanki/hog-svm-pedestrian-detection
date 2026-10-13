@@ -5,6 +5,7 @@ from time import perf_counter
 import cv2
 
 from src.detector import HOGPedestrianDetector
+from src.annotation_validation import warn_if_extreme_annotation
 from src.latency import summarize_latency
 from src.postprocessing import non_max_suppression
 
@@ -146,7 +147,8 @@ def load_annotations(csv_path):
     return annotations
 
 
-def match_predictions(predictions, ground_truth):
+def match_predictions_with_details(predictions, ground_truth):
+    """Apply the evaluator's greedy matching and retain per-box assignments."""
     predictions = sorted(
         predictions,
         key=lambda detection: detection["confidence"],
@@ -155,8 +157,8 @@ def match_predictions(predictions, ground_truth):
 
     matched_gt = set()
 
-    tp = 0
-    fp = 0
+    matches = []
+    false_positives = []
 
     for prediction in predictions:
         x, y, width, height = prediction["bbox"]
@@ -179,12 +181,33 @@ def match_predictions(predictions, ground_truth):
                 best_gt_index = index
 
         if best_iou >= IOU_THRESHOLD:
-            tp += 1
             matched_gt.add(best_gt_index)
+            matches.append({
+                "prediction": prediction,
+                "ground_truth_index": best_gt_index,
+                "iou": best_iou,
+            })
         else:
-            fp += 1
+            false_positives.append(prediction)
 
-    fn = len(ground_truth) - len(matched_gt)
+    false_negatives = [
+        {"ground_truth_index": index, "bbox": box}
+        for index, box in enumerate(ground_truth)
+        if index not in matched_gt
+    ]
+
+    return {
+        "matches": matches,
+        "false_positives": false_positives,
+        "false_negatives": false_negatives,
+    }
+
+
+def match_predictions(predictions, ground_truth):
+    details = match_predictions_with_details(predictions, ground_truth)
+    tp = len(details["matches"])
+    fp = len(details["false_positives"])
+    fn = len(details["false_negatives"])
 
     return tp, fp, fn
 
@@ -312,6 +335,14 @@ def main():
         if current_frame_number not in ground_truth:
             frame_index += 1
             continue
+
+        for annotation_box in ground_truth[current_frame_number]:
+            warn_if_extreme_annotation(
+                current_frame_number,
+                annotation_box,
+                frame.shape,
+                source=args.annotations,
+            )
 
         result = detector.detect(frame)
 
