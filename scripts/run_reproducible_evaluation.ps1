@@ -15,13 +15,21 @@ whose manifest remains "running" is incomplete and must not be treated as done.
 #>
 [CmdletBinding()]
 param(
-    [switch]$ValidateOnly
+    [switch]$ValidateOnly,
+    [switch]$PreflightOnly
 )
 
 $ErrorActionPreference = 'Stop'
 
 $ExpectedTimingHeader = 'frame,video_decode_ms,detector_wall_ms,detector_cpu_ms'
 $NumberPattern = '[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?'
+
+function Format-FailureDiagnostic {
+    param([Parameter(Mandatory = $true)]$ErrorRecord, [Parameter(Mandatory = $true)][string]$Stage)
+    $parts = @("Stage: $Stage", "Message: $($ErrorRecord.Exception.Message)", "Exception details:`n$($ErrorRecord.Exception.ToString())")
+    if ($ErrorRecord.ScriptStackTrace) { $parts += "PowerShell script stack:`n$($ErrorRecord.ScriptStackTrace)" }
+    return $parts -join "`n"
+}
 
 function Convert-LogNumber {
     param([Parameter(Mandatory = $true)][string]$Value)
@@ -220,6 +228,13 @@ function Write-JsonFile {
 }
 
 function Invoke-ValidatorSelfTest {
+    $inner = [InvalidOperationException]::new('synthetic inner cause')
+    $outer = [Exception]::new('synthetic reporting failure', $inner)
+    $record = [Management.Automation.ErrorRecord]::new($outer, 'SyntheticFailure', [Management.Automation.ErrorCategory]::NotSpecified, $null)
+    $diagnostic = Format-FailureDiagnostic -ErrorRecord $record -Stage 'synthetic validation'
+    if ($diagnostic -notmatch 'synthetic validation' -or $diagnostic -notmatch 'synthetic reporting failure' -or $diagnostic -notmatch 'synthetic inner cause') {
+        throw 'Synthetic exception-reporting self-test omitted the stage or inner exception.'
+    }
     $testRoot = Join-Path ([IO.Path]::GetTempPath()) ("hog_eval_runner_validation_" + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $testRoot | Out-Null
     try {
@@ -362,15 +377,73 @@ $clipDefinitions = @(
     [ordered]@{ name = 'fourway'; video = 'dataset/fourway.avi'; annotations = 'dataset/fourway.csv'; expected_frames = 1281 },
     [ordered]@{ name = 'night'; video = 'dataset/night.avi'; annotations = 'dataset/night.csv'; expected_frames = 565 }
 )
+
+if ($PreflightOnly) {
+    $preflightStage = 'repository setup'
+    try {
+        $repoRoot = Split-Path -Parent $PSScriptRoot
+        Push-Location $repoRoot
+        $preflightStage = 'project interpreter verification'
+        if (-not (Test-Path -LiteralPath $expectedPythonExecutable -PathType Leaf)) {
+            throw "Project interpreter is missing: $expectedPythonExecutable"
+        }
+        $expectedPythonExecutable = (Resolve-Path -LiteralPath $expectedPythonExecutable).Path
+        $savedErrorActionPreference = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $pythonMetadataJson = & $expectedPythonExecutable -c 'import sys, json, cv2; from src.config import DetectorConfig; from scripts.evaluate_video import IOU_THRESHOLD; c=DetectorConfig(); print(json.dumps(dict(executable=sys.executable,version=sys.version.split()[0],opencv_version=cv2.__version__,config=dict(scale=c.scale,hit_threshold=c.hit_threshold,win_stride=list(c.win_stride),padding=list(c.padding),nms_iou_threshold=c.nms_iou_threshold,evaluation_iou_threshold=IOU_THRESHOLD))))' 2>&1
+            $pythonExitCode = $LASTEXITCODE
+        }
+        finally { $ErrorActionPreference = $savedErrorActionPreference }
+        if ($pythonExitCode -ne 0) { throw "Project interpreter preflight failed (exit $pythonExitCode): $($pythonMetadataJson -join ' ')" }
+        $pythonMetadata = ($pythonMetadataJson -join "`n") | ConvertFrom-Json
+        $actualPythonExecutable = [IO.Path]::GetFullPath([string]$pythonMetadata.executable)
+        if (-not [string]::Equals($actualPythonExecutable, $expectedPythonExecutable, [StringComparison]::OrdinalIgnoreCase)) {
+            throw "Interpreter identity mismatch: expected '$expectedPythonExecutable'; sys.executable reported '$actualPythonExecutable'."
+        }
+        if ($pythonMetadata.config.scale -ne 1.05 -or $pythonMetadata.config.hit_threshold -ne 1.0 -or $pythonMetadata.config.nms_iou_threshold -ne 0.3 -or $pythonMetadata.config.evaluation_iou_threshold -ne 0.5 -or ($pythonMetadata.config.win_stride -join ',') -cne '4,4' -or ($pythonMetadata.config.padding -join ',') -cne '8,8') {
+            throw 'Production detector or evaluation defaults differ from the requested reproducibility configuration; refusing to run.'
+        }
+        $preflightStage = 'Git revision check'
+        $revision = (& git rev-parse HEAD 2>&1 | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or $revision -notmatch '^[0-9a-fA-F]{40}$') { throw 'Could not record the full Git revision.' }
+        $preflightStage = 'video and annotation input checks'
+        foreach ($clip in $clipDefinitions) {
+            $videoPath = Join-Path $repoRoot $clip.video
+            $annotationPath = Join-Path $repoRoot $clip.annotations
+            if (-not (Test-Path -LiteralPath $videoPath -PathType Leaf)) { throw "Missing video for $($clip.name): $videoPath" }
+            if (-not (Test-Path -LiteralPath $annotationPath -PathType Leaf)) { throw "Missing annotation CSV for $($clip.name): $annotationPath" }
+            $rowCount = @(Import-Csv -LiteralPath $annotationPath).Count
+            Write-Output "INPUT=$($clip.name) video=$videoPath annotations=$annotationPath annotation_rows=$rowCount"
+        }
+        Write-Output "PYTHON_EXECUTABLE=$actualPythonExecutable"
+        Write-Output "PYTHON_VERSION=$($pythonMetadata.version)"
+        Write-Output "OPENCV_VERSION=$($pythonMetadata.opencv_version)"
+        Write-Output "GIT_REVISION=$revision"
+        Write-Output ("PRODUCTION_SETTINGS=" + (ConvertTo-Json -InputObject $pythonMetadata.config -Compress -Depth 5))
+        Write-Output 'PREFLIGHT_ONLY=PASS'
+        Pop-Location
+        exit 0
+    }
+    catch {
+        $preflightError = $_
+        $diagnostic = Format-FailureDiagnostic -ErrorRecord $preflightError -Stage $preflightStage
+        [Console]::Error.WriteLine($diagnostic)
+        try { Pop-Location } catch { }
+        exit 1
+    }
+}
+
 $runId = $null
 $revision = $null
+$evaluationStage = 'interpreter preflight'
 
 try {
     if (-not (Test-Path -LiteralPath $expectedPythonExecutable -PathType Leaf)) {
         throw "Project interpreter is missing: $expectedPythonExecutable"
     }
     $expectedPythonExecutable = (Resolve-Path -LiteralPath $expectedPythonExecutable).Path
-    $pythonMetadataJson = & $expectedPythonExecutable -c 'import sys, json, cv2; from src.config import DetectorConfig; from scripts.evaluate_video import IOU_THRESHOLD; c=DetectorConfig(); print(json.dumps({"executable":sys.executable,"version":sys.version.split()[0],"opencv_version":cv2.__version__,"config":{"scale":c.scale,"hit_threshold":c.hit_threshold,"win_stride":list(c.win_stride),"padding":list(c.padding),"nms_iou_threshold":c.nms_iou_threshold,"evaluation_iou_threshold":IOU_THRESHOLD}}))' 2>&1
+    $pythonMetadataJson = & $expectedPythonExecutable -c 'import sys, json, cv2; from src.config import DetectorConfig; from scripts.evaluate_video import IOU_THRESHOLD; c=DetectorConfig(); print(json.dumps(dict(executable=sys.executable,version=sys.version.split()[0],opencv_version=cv2.__version__,config=dict(scale=c.scale,hit_threshold=c.hit_threshold,win_stride=list(c.win_stride),padding=list(c.padding),nms_iou_threshold=c.nms_iou_threshold,evaluation_iou_threshold=IOU_THRESHOLD))))' 2>&1
     $pythonExitCode = $LASTEXITCODE
     if ($pythonExitCode -ne 0) {
         throw "Project interpreter preflight failed (exit $pythonExitCode): $($pythonMetadataJson -join ' ')"
@@ -384,6 +457,7 @@ try {
         throw 'Production detector or evaluation defaults differ from the requested reproducibility configuration; refusing to run.'
     }
 
+    $evaluationStage = 'run directory and manifest setup'
     $runId = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ') + '_' + [guid]::NewGuid().ToString('N').Substring(0, 8)
     New-Item -ItemType Directory -Path (Join-Path $repoRoot 'results/reproducibility') -Force | Out-Null
     $runDirectory = Join-Path $repoRoot (Join-Path 'results/reproducibility' ("full_" + $runId))
@@ -457,6 +531,7 @@ try {
 
     for ($clipIndex = 0; $clipIndex -lt $clipDefinitions.Count; $clipIndex++) {
         $definition = $clipDefinitions[$clipIndex]
+        $evaluationStage = "evaluator clip '$($definition.name)'"
         $entry = $manifest.clips[$clipIndex]
         $entry.status = 'running'
         $entry.started_at_utc = (Get-Date).ToUniversalTime().ToString('o')
@@ -498,6 +573,7 @@ try {
         }
     }
 
+    $evaluationStage = 'summary finalization'
     if (-not $runFailed) {
         $manifest.status = 'finalizing'
     }
@@ -581,11 +657,12 @@ try {
     }
 }
 catch {
-    $fatalMessage = $_.Exception.Message
+    $originalError = $_
+    $diagnostic = Format-FailureDiagnostic -ErrorRecord $originalError -Stage $evaluationStage
     if ($manifest -and $manifestPath) {
         $manifest.status = 'failed'
         $manifest.ended_at_utc = (Get-Date).ToUniversalTime().ToString('o')
-        $manifest.failure = $fatalMessage
+        $manifest.failure = $diagnostic
         if ($summaryPath) {
             $failedSummary = [ordered]@{
                 run_id = $manifest.run_id
@@ -596,7 +673,7 @@ catch {
                 ended_at_utc = $manifest.ended_at_utc
                 configuration = $manifest.configuration
                 interruption_note = $manifest.interruption_note
-                failure = $fatalMessage
+                failure = $diagnostic
                 clips = @($manifest.clips)
             }
             try {
@@ -604,7 +681,8 @@ catch {
                 $null = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
             }
             catch {
-                $manifest.failure = "$fatalMessage; summary.json creation/validation failed: $($_.Exception.Message)"
+                $artifactError = $_.Exception.Message
+                $manifest.failure = "$diagnostic`nFailure artifact error: $artifactError"
             }
         }
         try { Write-JsonFile -Path $manifestPath -Value $manifest } catch { }
@@ -613,7 +691,8 @@ catch {
         Write-Output "RUN_STATUS=FAILED"
         Write-Output "RUN_DIRECTORY=$runDirectory"
     }
-    Write-Error $fatalMessage
+    [Console]::Error.WriteLine($diagnostic)
+    exit 1
 }
 finally {
     Pop-Location
