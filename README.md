@@ -8,27 +8,55 @@ Image → HOG + SVM → Raw Detections → NMS → Final Detections → Metrics 
 
 ## Setup
 
+Create and activate a virtual environment (Windows PowerShell):
+
 ```powershell
 python -m venv .hog
-.hog\Scripts\Activate.ps1
+.\.hog\Scripts\Activate.ps1
 python -m pip install -r requirements.txt
 ```
 
-Detect an image:
+### Detect an image
 
 ```powershell
 python -m scripts.detect_image --input examples/input/pedestrian.png --output examples/output/detections.png
 ```
 
-Run the API:
+### Run the API locally
 
 ```powershell
 python -m uvicorn api.main:app --reload
 ```
 
-`GET /health` checks the service. `POST /detect` accepts an image upload and returns its dimensions, request ID, raw and final detections, suppressed count, and detector latency.
+- Health check: `GET http://localhost:8000/health`
+- Image detection: `POST http://localhost:8000/detect` with an image uploaded as a multipart form field named `file`.
 
-Run tests with `python -m pytest -q`. Build and run the container with `docker compose up --build`.
+### Run tests
+
+```powershell
+python -m pytest -q
+```
+
+### Run with Docker
+
+```powershell
+docker compose up --build -d
+docker compose ps
+```
+
+Check the service:
+
+```powershell
+curl.exe http://localhost:8000/health
+```
+
+Stop the container:
+
+```powershell
+docker compose down
+```
+
+The `/detect` endpoint accepts an image upload and returns image dimensions, a request ID, raw and final detections, the number of suppressed detections, and detector latency.
 
 ## Evaluation
 
