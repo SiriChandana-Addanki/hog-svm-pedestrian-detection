@@ -227,6 +227,63 @@ function Write-JsonFile {
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
 }
 
+function Write-FailedFinalization {
+    param(
+        [Parameter(Mandatory = $true)]$Manifest,
+        [Parameter(Mandatory = $true)][string]$ManifestPath,
+        [Parameter(Mandatory = $true)][string]$SummaryPath,
+        [Parameter(Mandatory = $true)][string]$Revision,
+        [Parameter(Mandatory = $true)][string]$Failure
+    )
+    $Manifest.status = 'failed'
+    $Manifest.failure = $Failure
+    $Manifest.ended_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+    $failedSummary = [ordered]@{
+        run_id = $Manifest.run_id
+        status = 'failed'
+        repository_revision = $Revision
+        python = $Manifest.python
+        started_at_utc = $Manifest.started_at_utc
+        ended_at_utc = $Manifest.ended_at_utc
+        configuration = $Manifest.configuration
+        interruption_note = $Manifest.interruption_note
+        failure = $Failure
+        clips = @($Manifest.clips)
+    }
+    Write-JsonFile -Path $ManifestPath -Value $Manifest
+    Write-JsonFile -Path $SummaryPath -Value $failedSummary
+    $manifestCheck = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $summaryCheck = Get-Content -LiteralPath $SummaryPath -Raw | ConvertFrom-Json
+    if ($manifestCheck.status -ne 'failed' -or $summaryCheck.status -ne 'failed' -or
+        $manifestCheck.run_id -ne $summaryCheck.run_id -or
+        $manifestCheck.repository_revision -ne $summaryCheck.repository_revision -or
+        $manifestCheck.failure -ne $Failure -or $summaryCheck.failure -ne $Failure) {
+        throw 'Failed manifest and summary did not validate consistently.'
+    }
+}
+
+function Invoke-NativeEvaluator {
+    param([Parameter(Mandatory = $true)][string]$Executable, [Parameter(Mandatory = $true)][string[]]$ArgumentList, [Parameter(Mandatory = $true)][string]$LogPath)
+    # Redirect streams through Start-Process so native stderr is not converted
+    # into a terminating PowerShell error (including under Windows PowerShell).
+    $stdoutPath = "$LogPath.stdout.tmp"
+    $stderrPath = "$LogPath.stderr.tmp"
+    try {
+        $process = Start-Process -FilePath $Executable -ArgumentList $ArgumentList -NoNewWindow -Wait -PassThru -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath
+        $stdout = if (Test-Path -LiteralPath $stdoutPath) { [IO.File]::ReadAllText($stdoutPath) } else { '' }
+        $stderr = if (Test-Path -LiteralPath $stderrPath) { [IO.File]::ReadAllText($stderrPath) } else { '' }
+        # Keep warnings visible, ahead of stdout so the evaluator's final
+        # summary remains the end of the log for its completeness validator.
+        [IO.File]::WriteAllText($LogPath, $stderr + $stdout)
+        if ($stderr) { Write-Host -NoNewline $stderr }
+        if ($stdout) { Write-Host -NoNewline $stdout }
+        return $process.ExitCode
+    }
+    finally {
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Invoke-ValidatorSelfTest {
     $inner = [InvalidOperationException]::new('synthetic inner cause')
     $outer = [Exception]::new('synthetic reporting failure', $inner)
@@ -329,6 +386,31 @@ Detector wall-clock max frame: 2
             throw 'Synthetic validator self-test failed the JSON round trip.'
         }
 
+        $failedManifestPath = Join-Path $testRoot 'failed-manifest.json'
+        $failedSummaryPath = Join-Path $testRoot 'failed-summary.json'
+        $failedManifest = [ordered]@{
+            run_id = 'synthetic-run'; status = 'running'; failure = $null
+            repository_revision = 'synthetic-revision'; python = @{}
+            started_at_utc = 'synthetic-start'; ended_at_utc = $null
+            configuration = @{}; interruption_note = 'synthetic'; clips = @()
+        }
+        Write-FailedFinalization -Manifest $failedManifest -ManifestPath $failedManifestPath -SummaryPath $failedSummaryPath -Revision 'synthetic-revision' -Failure 'synthetic clip failure'
+        $failedManifestCheck = Get-Content -LiteralPath $failedManifestPath -Raw | ConvertFrom-Json
+        $failedSummaryCheck = Get-Content -LiteralPath $failedSummaryPath -Raw | ConvertFrom-Json
+        if ($failedManifestCheck.status -ne 'failed' -or $failedSummaryCheck.status -ne 'failed' -or
+            $failedManifestCheck.run_id -ne $failedSummaryCheck.run_id -or
+            $failedManifestCheck.repository_revision -ne $failedSummaryCheck.repository_revision -or
+            $failedManifestCheck.failure -ne 'synthetic clip failure' -or $failedSummaryCheck.failure -ne 'synthetic clip failure' -or
+            (Test-Path -LiteralPath (Join-Path $testRoot 'completion.json'))) {
+            throw 'Synthetic failed-finalization self-test did not preserve consistent failed artifacts.'
+        }
+
+        $warningLogPath = Join-Path $testRoot 'warning.log'
+        $nativeExitCode = Invoke-NativeEvaluator -Executable $env:ComSpec -ArgumentList @('/d', '/c', 'echo UserWarning: synthetic stderr warning 1>&2') -LogPath $warningLogPath
+        if ($nativeExitCode -ne 0 -or -not ([IO.File]::ReadAllText($warningLogPath).Contains('UserWarning: synthetic stderr warning'))) {
+            throw 'Synthetic native-process self-test failed to preserve a successful stderr warning.'
+        }
+
         foreach ($case in @(
             [ordered]@{ name = 'duplicate TP'; text = $syntheticLog + "`nTP : 4`n" },
             [ordered]@{ name = 'missing precision'; text = $syntheticLog.Replace('Precision         : 0.6000', '') },
@@ -341,7 +423,7 @@ Detector wall-clock max frame: 2
             if (-not $rejected) { throw "Synthetic validator self-test accepted $($case.name)." }
         }
 
-        Write-Output 'VALIDATION_ONLY=PASS (valid summary/CSV and JSON round trip accepted; frame-count mismatch, incomplete summary, traceback, frame sequence, duplicate TP, missing precision, and malformed F1 rejected; evaluator was not launched)'
+        Write-Output 'VALIDATION_ONLY=PASS (validator failures rejected; failed finalization round trip and successful native stderr warning accepted; evaluator was not launched)'
     }
     finally {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
@@ -542,13 +624,11 @@ try {
         $exitCode = $null
         $clipError = $null
         try {
-            & $expectedPythonExecutable -m scripts.evaluate_video `
-                --video $definition.video `
-                --annotations $definition.annotations `
-                --sample-every 1 `
-                --timings-csv $timingPath 2>&1 |
-                Tee-Object -FilePath $logPath
-            $exitCode = $LASTEXITCODE
+            $exitCode = Invoke-NativeEvaluator -Executable $expectedPythonExecutable -ArgumentList @(
+                '-m', 'scripts.evaluate_video', '--video', $definition.video,
+                '--annotations', $definition.annotations, '--sample-every', '1',
+                '--timings-csv', $timingPath
+            ) -LogPath $logPath
             $entry.process_exit_code = $exitCode
             if ($exitCode -ne 0) {
                 throw "Evaluator process exited with code $exitCode."
@@ -574,47 +654,55 @@ try {
     }
 
     $evaluationStage = 'summary finalization'
-    if (-not $runFailed) {
-        $manifest.status = 'finalizing'
-    }
-    else {
-        $manifest.status = 'failed'
+    if ($runFailed) {
         for ($pendingIndex = 0; $pendingIndex -lt $manifest.clips.Count; $pendingIndex++) {
             if ($manifest.clips[$pendingIndex].status -eq 'pending') {
                 $manifest.clips[$pendingIndex].status = 'not_started'
             }
         }
-    }
-    $manifest.ended_at_utc = (Get-Date).ToUniversalTime().ToString('o')
-
-    $summary = [ordered]@{
-        run_id = $runId
-        status = 'finalizing'
-        repository_revision = $revision
-        python = $manifest.python
-        started_at_utc = $manifest.started_at_utc
-        ended_at_utc = $manifest.ended_at_utc
-        configuration = $expectedConfig
-        interruption_note = $manifest.interruption_note
-        failure = $failureMessage
-        clips = @($manifest.clips)
-    }
-    try {
-        Write-JsonFile -Path $manifestPath -Value $manifest
-        Write-JsonFile -Path $summaryPath -Value $summary
-        $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
-        $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
-        if ($manifestCheck.status -ne 'finalizing' -or $summaryCheck.status -ne 'finalizing' -or $manifestCheck.run_id -ne $summaryCheck.run_id) {
-            throw 'Pre-completion artifacts failed their finalizing-state validation.'
+        try {
+            Write-FailedFinalization -Manifest $manifest -ManifestPath $manifestPath -SummaryPath $summaryPath -Revision $revision -Failure $failureMessage
+        }
+        catch {
+            $failureMessage = "$failureMessage`nFailed-run finalization also failed: $($_.Exception.Message)"
+            $manifest.failure = $failureMessage
+            try { Write-JsonFile -Path $manifestPath -Value $manifest } catch { }
         }
     }
-    catch {
-        $runFailed = $true
-        $manifest.status = 'failed'
-        $failureMessage = "summary.json creation or validation failed: $($_.Exception.Message)"
-        $manifest.failure = $failureMessage
-        try { Write-JsonFile -Path $manifestPath -Value $manifest } catch { }
-        throw $failureMessage
+    else {
+        $manifest.status = 'finalizing'
+        $manifest.ended_at_utc = (Get-Date).ToUniversalTime().ToString('o')
+        $summary = [ordered]@{
+            run_id = $runId
+            status = 'finalizing'
+            repository_revision = $revision
+            python = $manifest.python
+            started_at_utc = $manifest.started_at_utc
+            ended_at_utc = $manifest.ended_at_utc
+            configuration = $expectedConfig
+            interruption_note = $manifest.interruption_note
+            failure = $null
+            clips = @($manifest.clips)
+        }
+        try {
+            Write-JsonFile -Path $manifestPath -Value $manifest
+            Write-JsonFile -Path $summaryPath -Value $summary
+            $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
+            $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
+            if ($manifestCheck.status -ne 'finalizing' -or $summaryCheck.status -ne 'finalizing' -or
+                $manifestCheck.run_id -ne $summaryCheck.run_id -or
+                $manifestCheck.repository_revision -ne $summaryCheck.repository_revision) {
+                throw 'Pre-completion artifacts failed their finalizing-state validation.'
+            }
+        }
+        catch {
+            $runFailed = $true
+            $failureMessage = "summary.json creation or validation failed: $($_.Exception.Message)"
+            $manifest.status = 'failed'
+            $manifest.failure = $failureMessage
+            try { Write-JsonFile -Path $manifestPath -Value $manifest } catch { }
+            throw $failureMessage
+        }
     }
 
     if ($runFailed) {

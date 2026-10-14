@@ -1,0 +1,74 @@
+{
+    "run_id":  "20261014T113221450Z_f160efcf",
+    "status":  "failed",
+    "repository_revision":  "fc5cfaa1cea42e190a2284dc4a80ff45ab084914",
+    "python":  {
+                   "executable":  "C:\\hog-svm-pedestrian-detection\\.hog\\Scripts\\python.exe",
+                   "version":  "3.10.0",
+                   "opencv_version":  "4.14.0"
+               },
+    "started_at_utc":  "2026-10-14T11:32:21.5282260Z",
+    "ended_at_utc":  "2026-10-14T12:04:25.3738736Z",
+    "configuration":  {
+                          "scale":  1.05,
+                          "hit_threshold":  1,
+                          "win_stride":  [
+                                             4,
+                                             4
+                                         ],
+                          "padding":  [
+                                          8,
+                                          8
+                                      ],
+                          "nms_iou_threshold":  0.3,
+                          "evaluation_iou_threshold":  0.5,
+                          "sample_every":  1,
+                          "max_frames":  null
+                      },
+    "interruption_note":  "Timing rows are buffered in memory and written only after the evaluator frame loop. Interruption during inference may leave no timing CSV; a manifest still marked running is incomplete.",
+    "failure":  "Stage: summary finalization\nMessage: summary.json creation or validation failed: Pre-completion artifacts failed their finalizing-state validation.\nException details:\nSystem.Management.Automation.RuntimeException: summary.json creation or validation failed: Pre-completion artifacts failed their finalizing-state validation.\nPowerShell script stack:\nat \u003cScriptBlock\u003e, C:\\hog-svm-pedestrian-detection\\scripts\\run_reproducible_evaluation.ps1: line 617",
+    "clips":  [
+                  {
+                      "name":  "crosswalk",
+                      "video":  "dataset/crosswalk.avi",
+                      "annotations":  "dataset/crosswalk.csv",
+                      "expected_frames":  378,
+                      "status":  "failed",
+                      "started_at_utc":  "2026-10-14T11:32:21.9513507Z",
+                      "ended_at_utc":  "2026-10-14T12:04:25.1085595Z",
+                      "process_exit_code":  null,
+                      "log":  "crosswalk.log",
+                      "timings_csv":  "crosswalk_timings.csv",
+                      "validation_error":  "C:\\hog-svm-pedestrian-detection\\scripts\\evaluate_video.py:340: UserWarning: dataset/crosswalk.csv: annotation row/frame 369, XYXY box=(-18, 437, 170, 814): coordinates extend outside the frame. The annotation is retained unchanged.",
+                      "metrics":  null
+                  },
+                  {
+                      "name":  "fourway",
+                      "video":  "dataset/fourway.avi",
+                      "annotations":  "dataset/fourway.csv",
+                      "expected_frames":  1281,
+                      "status":  "not_started",
+                      "started_at_utc":  null,
+                      "ended_at_utc":  null,
+                      "process_exit_code":  null,
+                      "log":  "fourway.log",
+                      "timings_csv":  "fourway_timings.csv",
+                      "validation_error":  null,
+                      "metrics":  null
+                  },
+                  {
+                      "name":  "night",
+                      "video":  "dataset/night.avi",
+                      "annotations":  "dataset/night.csv",
+                      "expected_frames":  565,
+                      "status":  "not_started",
+                      "started_at_utc":  null,
+                      "ended_at_utc":  null,
+                      "process_exit_code":  null,
+                      "log":  "night.log",
+                      "timings_csv":  "night_timings.csv",
+                      "validation_error":  null,
+                      "metrics":  null
+                  }
+              ]
+}
