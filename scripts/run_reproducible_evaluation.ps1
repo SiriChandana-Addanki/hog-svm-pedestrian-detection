@@ -227,6 +227,171 @@ function Write-JsonFile {
     [IO.File]::WriteAllText($Path, $json + [Environment]::NewLine, (New-Object Text.UTF8Encoding($false)))
 }
 
+function ConvertTo-CanonicalValue {
+    param([AllowNull()]$Value)
+    if ($null -eq $Value) { return $null }
+    if ($Value -is [System.Collections.IDictionary]) {
+        $canonical = [ordered]@{}
+        foreach ($key in @($Value.Keys | Sort-Object)) { $canonical[$key] = ConvertTo-CanonicalValue $Value[$key] }
+        return ,$canonical
+    }
+    if ($Value -is [string] -or $Value.GetType().IsValueType) { return $Value }
+    if ($Value -is [System.Collections.IEnumerable]) {
+        $items = @()
+        foreach ($item in $Value) { $items += ,(ConvertTo-CanonicalValue $item) }
+        return ,$items
+    }
+    $properties = @($Value.PSObject.Properties | Where-Object { $_.MemberType -in @('NoteProperty', 'Property') } | Sort-Object Name)
+    if ($properties.Count -gt 0) {
+        $canonical = [ordered]@{}
+        foreach ($property in $properties) { $canonical[$property.Name] = ConvertTo-CanonicalValue $property.Value }
+        return ,$canonical
+    }
+    return $Value
+}
+
+function Test-StructuredEqual {
+    param([AllowNull()]$Left, [AllowNull()]$Right)
+    $leftJson = ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $Left) -Compress -Depth 20
+    $rightJson = ConvertTo-Json -InputObject (ConvertTo-CanonicalValue $Right) -Compress -Depth 20
+    return [string]::Equals($leftJson, $rightJson, [StringComparison]::Ordinal)
+}
+
+function Get-FieldNames {
+    param([Parameter(Mandatory = $true)]$Value)
+    if ($Value -is [System.Collections.IDictionary]) { return @($Value.Keys | ForEach-Object { [string]$_ } | Sort-Object) }
+    return @($Value.PSObject.Properties | Where-Object { $_.MemberType -in @('NoteProperty', 'Property') } | ForEach-Object { $_.Name } | Sort-Object)
+}
+
+function Assert-FieldSet {
+    param([Parameter(Mandatory = $true)]$Value, [Parameter(Mandatory = $true)][string[]]$Expected, [Parameter(Mandatory = $true)][string]$Description)
+    if (-not (Test-StructuredEqual @(Get-FieldNames $Value) @($Expected | Sort-Object))) { throw "$Description has missing or unexpected fields." }
+}
+
+function Assert-SuccessArtifactPair {
+    param($Manifest, $Summary, [Parameter(Mandatory = $true)]$ExpectedConfig, [Parameter(Mandatory = $true)]$ClipDefinitions, [Parameter(Mandatory = $true)][string]$ExpectedStatus, [Parameter(Mandatory = $true)][string]$ExpectedRevision)
+    foreach ($field in @('status', 'run_id', 'repository_revision', 'configuration', 'failure', 'clips')) {
+        if ($field -eq 'failure') {
+            if (@(Get-FieldNames $Manifest) -notcontains 'failure' -or @(Get-FieldNames $Summary) -notcontains 'failure') {
+                throw "Successful artifacts are missing '$field'."
+            }
+        }
+        elseif ($null -eq $Manifest.$field -or $null -eq $Summary.$field) { throw "Successful artifacts are missing '$field'." }
+    }
+    if ($Manifest.status -ne $ExpectedStatus -or $Summary.status -ne $ExpectedStatus -or
+        $Manifest.run_id -ne $Summary.run_id -or
+        [string]::IsNullOrWhiteSpace([string]$Manifest.run_id) -or
+        [string]::IsNullOrWhiteSpace([string]$Manifest.repository_revision) -or
+        $Manifest.repository_revision -ne $Summary.repository_revision -or
+        $Manifest.repository_revision -ne $ExpectedRevision -or
+        $null -ne $Manifest.failure -or $null -ne $Summary.failure) {
+        throw 'Manifest and summary identity or status did not validate consistently.'
+    }
+    if (-not (Test-StructuredEqual $Manifest.configuration $ExpectedConfig) -or
+        -not (Test-StructuredEqual $Summary.configuration $ExpectedConfig) -or
+        -not (Test-StructuredEqual $Manifest.configuration $Summary.configuration)) {
+        throw 'Manifest and summary production configuration did not validate consistently.'
+    }
+    $expectedNames = @($ClipDefinitions | ForEach-Object { [string]$_.name } | Sort-Object)
+    $manifestClips = @($Manifest.clips)
+    $summaryClips = @($Summary.clips)
+    foreach ($clipSet in @(@($manifestClips), @($summaryClips))) {
+        $names = @($clipSet | ForEach-Object { [string]$_.name })
+        if ($names.Count -ne $expectedNames.Count -or @($names | Sort-Object -Unique).Count -ne $expectedNames.Count -or
+            -not (Test-StructuredEqual @($names | Sort-Object) $expectedNames)) {
+            throw 'Manifest or summary has a missing, duplicate, or unexpected clip.'
+        }
+    }
+    foreach ($definition in $ClipDefinitions) {
+        $manifestClip = @($manifestClips | Where-Object { $_.name -eq $definition.name })[0]
+        $summaryClip = @($summaryClips | Where-Object { $_.name -eq $definition.name })[0]
+        if ($manifestClip.status -ne 'completed' -or $summaryClip.status -ne 'completed' -or
+            $null -eq $manifestClip.metrics -or $null -eq $summaryClip.metrics) {
+            throw "Clip '$($definition.name)' has an incomplete status or missing metrics."
+        }
+        foreach ($clip in @($manifestClip, $summaryClip)) {
+            foreach ($metricGroup in @('counts', 'detection_metrics', 'latency')) {
+                if ($null -eq $clip.metrics.$metricGroup) { throw "Clip '$($definition.name)' is missing metrics '$metricGroup'." }
+            }
+            Assert-FieldSet $clip.metrics.counts @('decoded', 'annotated', 'evaluated', 'annotation_rows') "Clip '$($definition.name)' counts"
+            Assert-FieldSet $clip.metrics.detection_metrics @('tp', 'fp', 'fn', 'precision', 'recall', 'f1') "Clip '$($definition.name)' detection metrics"
+            Assert-FieldSet $clip.metrics.latency @('detector_wall', 'detector_cpu', 'video_decode', 'wall_outliers', 'detector_wall_max_frame') "Clip '$($definition.name)' latency metrics"
+            foreach ($countName in @('decoded', 'annotated', 'evaluated', 'annotation_rows')) {
+                if ($null -eq $clip.metrics.counts.$countName -or $clip.metrics.counts.$countName -ne $definition.expected_frames) {
+                    throw "Clip '$($definition.name)' has missing or invalid '$countName' metrics."
+                }
+            }
+            foreach ($metricName in @('tp', 'fp', 'fn', 'precision', 'recall', 'f1')) {
+                if ($null -eq $clip.metrics.detection_metrics.$metricName) { throw "Clip '$($definition.name)' is missing detection metric '$metricName'." }
+            }
+            foreach ($metricName in @('tp', 'fp', 'fn')) {
+                $countValue = 0
+                if (-not [int]::TryParse([string]$clip.metrics.detection_metrics.$metricName, [ref]$countValue) -or $countValue -lt 0) {
+                    throw "Clip '$($definition.name)' has malformed detection metric '$metricName'."
+                }
+            }
+            foreach ($metricName in @('precision', 'recall', 'f1')) {
+                $rateValue = 0.0
+                if (-not [double]::TryParse([string]$clip.metrics.detection_metrics.$metricName, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$rateValue) -or
+                    [double]::IsNaN($rateValue) -or [double]::IsInfinity($rateValue) -or $rateValue -lt 0 -or $rateValue -gt 1) {
+                    throw "Clip '$($definition.name)' has malformed detection metric '$metricName'."
+                }
+            }
+            foreach ($latencyName in @('detector_wall', 'detector_cpu', 'video_decode', 'wall_outliers', 'detector_wall_max_frame')) {
+                if ($null -eq $clip.metrics.latency.$latencyName) { throw "Clip '$($definition.name)' is missing latency metric '$latencyName'." }
+            }
+            foreach ($distributionName in @('detector_wall', 'detector_cpu', 'video_decode')) {
+                Assert-FieldSet $clip.metrics.latency.$distributionName @('count', 'mean_ms', 'median_ms', 'p95_ms', 'p99_ms', 'min_ms', 'max_ms') "Clip '$($definition.name)' $distributionName latency"
+                if ($clip.metrics.latency.$distributionName.count -ne $definition.expected_frames) {
+                    throw "Clip '$($definition.name)' has an invalid '$distributionName' sample count."
+                }
+                foreach ($valueName in @('mean_ms', 'median_ms', 'p95_ms', 'p99_ms', 'min_ms', 'max_ms')) {
+                    $latencyValue = 0.0
+                    if (-not [double]::TryParse([string]$clip.metrics.latency.$distributionName.$valueName, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$latencyValue) -or
+                        [double]::IsNaN($latencyValue) -or [double]::IsInfinity($latencyValue) -or $latencyValue -lt 0) {
+                        throw "Clip '$($definition.name)' has malformed '$distributionName' latency '$valueName'."
+                    }
+                }
+                if ($clip.metrics.latency.$distributionName.min_ms -gt $clip.metrics.latency.$distributionName.median_ms -or
+                    $clip.metrics.latency.$distributionName.median_ms -gt $clip.metrics.latency.$distributionName.p95_ms -or
+                    $clip.metrics.latency.$distributionName.p95_ms -gt $clip.metrics.latency.$distributionName.p99_ms -or
+                    $clip.metrics.latency.$distributionName.p99_ms -gt $clip.metrics.latency.$distributionName.max_ms) {
+                    throw "Clip '$($definition.name)' has contradictory '$distributionName' latency quantiles."
+                }
+            }
+            Assert-FieldSet $clip.metrics.latency.wall_outliers @('threshold_ms', 'count', 'total') "Clip '$($definition.name)' wall outliers"
+            if ($clip.metrics.latency.wall_outliers.total -ne $definition.expected_frames) {
+                throw "Clip '$($definition.name)' has an invalid wall-outlier denominator."
+            }
+            $outlierThreshold = 0.0
+            $outlierCount = 0
+            if (-not [double]::TryParse([string]$clip.metrics.latency.wall_outliers.threshold_ms, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$outlierThreshold) -or
+                [double]::IsNaN($outlierThreshold) -or [double]::IsInfinity($outlierThreshold) -or $outlierThreshold -lt 0 -or
+                -not [int]::TryParse([string]$clip.metrics.latency.wall_outliers.count, [ref]$outlierCount) -or $outlierCount -lt 0 -or $outlierCount -gt $definition.expected_frames) {
+                throw "Clip '$($definition.name)' has malformed wall-outlier metrics."
+            }
+            $maxFrame = 0
+            if (-not [int]::TryParse([string]$clip.metrics.latency.detector_wall_max_frame, [ref]$maxFrame) -or $maxFrame -lt 1 -or $maxFrame -gt $definition.expected_frames) {
+                throw "Clip '$($definition.name)' has an invalid detector maximum frame."
+            }
+        }
+        if (-not (Test-StructuredEqual $manifestClip.metrics $summaryClip.metrics)) {
+            throw "Clip '$($definition.name)' metrics differ between manifest and summary."
+        }
+    }
+}
+
+function Assert-CompletionMarker {
+    param($Marker, $Manifest, $Summary, [Parameter(Mandatory = $true)]$ExpectedConfig, [Parameter(Mandatory = $true)]$ClipDefinitions, [Parameter(Mandatory = $true)][string]$ExpectedRevision)
+    Assert-SuccessArtifactPair -Manifest $Manifest -Summary $Summary -ExpectedConfig $ExpectedConfig -ClipDefinitions $ClipDefinitions -ExpectedStatus 'completed' -ExpectedRevision $ExpectedRevision
+    foreach ($field in @('status', 'run_id', 'repository_revision')) {
+        if ($null -eq $Marker.$field -or $Marker.$field -ne $Manifest.$field -or $Marker.$field -ne $Summary.$field) {
+            throw "Completion marker '$field' does not match both successful artifacts."
+        }
+    }
+    if ($Marker.status -ne 'completed') { throw 'Completion marker status is not completed.' }
+}
+
 function Write-FailedFinalization {
     param(
         [Parameter(Mandatory = $true)]$Manifest,
@@ -405,6 +570,72 @@ Detector wall-clock max frame: 2
             throw 'Synthetic failed-finalization self-test did not preserve consistent failed artifacts.'
         }
 
+        $syntheticConfig = [ordered]@{ scale = 1.05; hit_threshold = 1.0 }
+        $syntheticDefinitions = @(
+            [ordered]@{ name = 'clip_a'; expected_frames = 2 },
+            [ordered]@{ name = 'clip_b'; expected_frames = 3 }
+        )
+        $newSyntheticArtifacts = {
+            param($Config, $Definitions)
+            $clips = @()
+            foreach ($definition in $Definitions) {
+                $frames = $definition.expected_frames
+                $metrics = [ordered]@{
+                    counts = [ordered]@{ decoded = $frames; annotated = $frames; evaluated = $frames; annotation_rows = $frames }
+                    detection_metrics = [ordered]@{ tp = 1; fp = 0; fn = 1; precision = 0.5; recall = 0.5; f1 = 0.5 }
+                    latency = [ordered]@{
+                        detector_wall = [ordered]@{ count = $frames; mean_ms = 1.0; median_ms = 1.0; p95_ms = 1.0; p99_ms = 1.0; min_ms = 1.0; max_ms = 1.0 }
+                        detector_cpu = [ordered]@{ count = $frames; mean_ms = 1.0; median_ms = 1.0; p95_ms = 1.0; p99_ms = 1.0; min_ms = 1.0; max_ms = 1.0 }
+                        video_decode = [ordered]@{ count = $frames; mean_ms = 1.0; median_ms = 1.0; p95_ms = 1.0; p99_ms = 1.0; min_ms = 1.0; max_ms = 1.0 }
+                        wall_outliers = [ordered]@{ threshold_ms = 2.0; count = 0; total = $frames }
+                        detector_wall_max_frame = 1
+                    }
+                }
+                $clips += [ordered]@{ name = $definition.name; status = 'completed'; metrics = $metrics }
+            }
+            $manifest = [ordered]@{ status = 'finalizing'; run_id = 'synthetic'; repository_revision = 'revision-a'; failure = $null; configuration = $Config; clips = $clips }
+            $summary = [ordered]@{ status = 'finalizing'; run_id = 'synthetic'; repository_revision = 'revision-a'; failure = $null; configuration = $Config; clips = @($clips) }
+            $summary = ConvertFrom-Json (ConvertTo-Json -InputObject $summary -Depth 20)
+            return @{ manifest = $manifest; summary = $summary }
+        }
+        $assertRejected = {
+            param([scriptblock]$Action, [string]$CaseName)
+            $didReject = $false
+            try { & $Action } catch { $didReject = $true }
+            if (-not $didReject) { throw "Synthetic integrity validation accepted $CaseName." }
+        }
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $pair.summary.clips[0].status = 'failed'
+        & $assertRejected { Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a' } 'different clip statuses'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $pair.summary.clips[0].metrics.detection_metrics.f1 = 0.25
+        & $assertRejected { Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a' } 'different clip metrics'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $pair.summary.configuration.scale = 1.1
+        & $assertRejected { Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a' } 'different configurations'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $badMarker = [ordered]@{ status = 'completed'; run_id = 'synthetic'; repository_revision = 'revision-b' }
+        & $assertRejected { Assert-CompletionMarker -Marker $badMarker -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedRevision 'revision-a' } 'completion marker revision mismatch'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $oneSidedMarker = [ordered]@{ status = 'completed'; run_id = 'synthetic'; repository_revision = 'revision-a' }
+        $pair.summary.repository_revision = 'revision-b'
+        & $assertRejected { Assert-CompletionMarker -Marker $oneSidedMarker -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedRevision 'revision-a' } 'completion marker matching only one artifact'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $pair.summary.clips = @($pair.summary.clips | Where-Object { $_.name -ne 'clip_b' })
+        & $assertRejected { Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a' } 'missing required clip'
+
+        $pair = & $newSyntheticArtifacts $syntheticConfig $syntheticDefinitions
+        $pair.summary.clips[0].metrics.detection_metrics.PSObject.Properties.Remove('f1')
+        & $assertRejected { Assert-SuccessArtifactPair -Manifest $pair.manifest -Summary $pair.summary -ExpectedConfig $syntheticConfig -ClipDefinitions $syntheticDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision 'revision-a' } 'missing required metric'
+
         $warningLogPath = Join-Path $testRoot 'warning.log'
         $nativeExitCode = Invoke-NativeEvaluator -Executable $env:ComSpec -ArgumentList @('/d', '/c', 'echo UserWarning: synthetic stderr warning 1>&2') -LogPath $warningLogPath
         if ($nativeExitCode -ne 0 -or -not ([IO.File]::ReadAllText($warningLogPath).Contains('UserWarning: synthetic stderr warning'))) {
@@ -423,7 +654,7 @@ Detector wall-clock max frame: 2
             if (-not $rejected) { throw "Synthetic validator self-test accepted $($case.name)." }
         }
 
-        Write-Output 'VALIDATION_ONLY=PASS (validator failures rejected; failed finalization round trip and successful native stderr warning accepted; evaluator was not launched)'
+        Write-Output 'VALIDATION_ONLY=PASS (failed finalization, artifact mismatch/missing-field rejection, warning capture, and evaluator-output validators passed; evaluator was not launched)'
     }
     finally {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
@@ -689,11 +920,7 @@ try {
             Write-JsonFile -Path $summaryPath -Value $summary
             $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
             $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
-            if ($manifestCheck.status -ne 'finalizing' -or $summaryCheck.status -ne 'finalizing' -or
-                $manifestCheck.run_id -ne $summaryCheck.run_id -or
-                $manifestCheck.repository_revision -ne $summaryCheck.repository_revision) {
-                throw 'Pre-completion artifacts failed their finalizing-state validation.'
-            }
+            Assert-SuccessArtifactPair -Manifest $manifestCheck -Summary $summaryCheck -ExpectedConfig $expectedConfig -ClipDefinitions $clipDefinitions -ExpectedStatus 'finalizing' -ExpectedRevision $revision
         }
         catch {
             $runFailed = $true
@@ -722,9 +949,7 @@ try {
         Write-JsonFile -Path $summaryPath -Value $summary
         $manifestCheck = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
         $summaryCheck = Get-Content -LiteralPath $summaryPath -Raw | ConvertFrom-Json
-        if ($manifestCheck.status -ne 'completed' -or $summaryCheck.status -ne 'completed' -or $manifestCheck.run_id -ne $summaryCheck.run_id -or $manifestCheck.repository_revision -ne $summaryCheck.repository_revision) {
-            throw 'Completed manifest and summary did not validate consistently.'
-        }
+        Assert-SuccessArtifactPair -Manifest $manifestCheck -Summary $summaryCheck -ExpectedConfig $expectedConfig -ClipDefinitions $clipDefinitions -ExpectedStatus 'completed' -ExpectedRevision $revision
         $completion = [ordered]@{
             run_id = $runId
             status = 'completed'
@@ -736,9 +961,7 @@ try {
         $completionTemp = Join-Path $runDirectory 'completion.json.tmp'
         Write-JsonFile -Path $completionTemp -Value $completion
         $completionCheck = Get-Content -LiteralPath $completionTemp -Raw | ConvertFrom-Json
-        if ($completionCheck.status -ne 'completed' -or $completionCheck.run_id -ne $runId) {
-            throw 'Completion marker failed validation.'
-        }
+        Assert-CompletionMarker -Marker $completionCheck -Manifest $manifestCheck -Summary $summaryCheck -ExpectedConfig $expectedConfig -ClipDefinitions $clipDefinitions -ExpectedRevision $revision
         [IO.File]::Move($completionTemp, $completionPath)
         Write-Output "RUN_STATUS=COMPLETED"
         Write-Output "RUN_DIRECTORY=$runDirectory"
@@ -747,6 +970,9 @@ try {
 catch {
     $originalError = $_
     $diagnostic = Format-FailureDiagnostic -ErrorRecord $originalError -Stage $evaluationStage
+    if ($runFailed -and $failureMessage -and $diagnostic -notlike "*$failureMessage*") {
+        $diagnostic = "$diagnostic`nOriginal evaluation failure: $failureMessage"
+    }
     if ($manifest -and $manifestPath) {
         $manifest.status = 'failed'
         $manifest.ended_at_utc = (Get-Date).ToUniversalTime().ToString('o')
