@@ -33,6 +33,8 @@ This is a small diagnostic sample, not a dataset-level estimate. It supported `h
 
 Each included video was evaluated sequentially at every annotated frame. Matching remains one-to-one at IoU ≥ 0.5. Latency percentiles are detector wall-clock latency in milliseconds; process CPU and `cap.read()` decode latency are independent measurements. All calls remain in the raw results. The evaluator flags calls over 2×wall-clock p95 as outliers but does not omit them.
 
+The latency values below are from a separately recorded earlier run and are run-condition-dependent. The latest verified full run, including per-frame mean detector wall latency, is documented in the repository [README](../README.md) and its artifacts under `results/reproducibility/full_20261014T122930477Z_2ece2fb9/`.
+
 | Clip | Frames | TP | FP | FN | Precision | Recall | F1 | Wall median | Wall P95 | Wall P99 | Outliers |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Crosswalk | 378 | 169 | 71 | 209 | 0.7042 | 0.4471 | 0.5469 | 3,211.121 | 5,299.441 | 6,469.235 | 0 / 378 |
