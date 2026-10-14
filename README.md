@@ -80,15 +80,19 @@ python -m scripts.benchmark --input examples/input/pedestrian.png --runs 20
 
 Use the median, p95, and p99 as the primary summaries of detector wall-clock latency; wall-clock stalls can make the mean and maximum unrepresentative. The evaluator always prints maximum and outlier counts for transparency. Those values are raw measurements, not estimates of steady-state inference speed. Results depend on the machine and run conditions; rerun the commands above for a local measurement.
 
-Full evaluation on the included clips with the current `hit_threshold=1.0` (latency in ms; IoU threshold 0.5):
+Verified full reproducibility run on the included clips (every frame, NMS IoU 0.3, evaluation IoU 0.5; production settings: scale 1.05, hit threshold 1.0, stride `(4, 4)`, padding `(8, 8)`):
 
-| Clip | Frames | TP | FP | FN | Precision | Recall | F1 | Wall median | Wall P95 | Wall P99 | Calls > 2×P95 |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Crosswalk | 378 | 169 | 71 | 209 | 0.7042 | 0.4471 | 0.5469 | 3,211.121 | 5,299.441 | 6,469.235 | 0 |
-| Fourway | 1,281 | 425 | 142 | 856 | 0.7496 | 0.3318 | 0.4600 | 3,398.992 | 4,662.867 | 5,866.237 | 5 |
-| Night | 565 | 274 | 60 | 291 | 0.8204 | 0.4850 | 0.6096 | 3,546.670 | 5,337.880 | 7,418.991 | 4 |
+| Clip | Frames | TP | FP | FN | Precision | Recall | F1 | Mean wall (ms/frame) | Wall median | Wall P95 | Wall P99 | Calls > 2×P95 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Crosswalk | 378 | 169 | 71 | 209 | 0.7042 | 0.4471 | 0.5469 | 3,259.407 | 3,032.983 | 5,193.504 | 6,403.066 | 0 |
+| Fourway | 1,281 | 425 | 142 | 856 | 0.7496 | 0.3318 | 0.4600 | 4,228.522 | 3,709.763 | 7,016.221 | 11,599.913 | 8 |
+| Night | 565 | 274 | 60 | 291 | 0.8204 | 0.4850 | 0.6096 | 3,815.669 | 3,925.824 | 4,479.413 | 5,086.079 | 0 |
 
 Latency percentiles summarize detector wall-clock time; they exclude decode time because decoding is measured separately. The evaluator still prints and retains each distribution's raw maximum, but maximum values are not representative inference latency. The included clips have separate scene characteristics; do not generalize one clip's detection metrics to the others. These measurements are machine- and run-condition-dependent.
+
+The measured mean detector wall latency was about 3.3–4.2 seconds per frame. These timings do not demonstrate real-time performance. The run ID is `20261014T122930477Z_2ece2fb9`, evaluated at Git revision `6d7f6720787dda38e5bd397ab884231ff4dd32d1`. Its manifest, summary, completion marker, logs, and per-frame timing CSVs are in `results/reproducibility/full_20261014T122930477Z_2ece2fb9/`.
+
+The evaluator logged 10 total annotation warnings for Crosswalk, all out-of-frame; 58 total annotation warnings for Fourway, including 37 out-of-frame; and 39 total annotation warnings for Night, including 38 out-of-frame. Annotations were retained unchanged and were not corrected or excluded from scoring.
 
 ## Limitations
 
